@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -61,7 +60,13 @@ export function CandidateForm({ initialData, onSuccess, onCancel }: CandidateFor
       if (initialData) {
         updateCandidate(initialData.id, values);
       } else {
-        addCandidate(values);
+        // Ensure all required fields are present before adding
+        const candidateData: Omit<Candidate, 'id' | 'createdAt' | 'updatedAt'> = {
+          name: values.name,
+          position: values.position,
+          status: values.status
+        };
+        addCandidate(candidateData);
       }
       
       setIsSubmitting(false);

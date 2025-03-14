@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -92,16 +91,18 @@ export function ConvocationForm({ initialData, onSuccess, onCancel }: Convocatio
         });
       }
       
+      // Ensure all required fields are present
+      const convocationData: Omit<Convocation, 'id' | 'createdAt'> = {
+        date: values.date.toISOString(),
+        hasCalled: values.hasCalled,
+        calledCandidates: values.calledCandidates || [],
+        notes: values.notes
+      };
+      
       if (initialData) {
-        updateConvocation(initialData.id, {
-          ...values,
-          date: values.date.toISOString(),
-        });
+        updateConvocation(initialData.id, convocationData);
       } else {
-        addConvocation({
-          ...values,
-          date: values.date.toISOString(),
-        });
+        addConvocation(convocationData);
       }
       
       setIsSubmitting(false);
