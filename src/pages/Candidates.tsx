@@ -19,11 +19,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Search, UserPlus, Users, XCircle } from 'lucide-react';
+import { Search, UserPlus, Users, XCircle, ListFilter } from 'lucide-react';
 import { getCandidates } from '@/utils/storage';
 import { Candidate, CandidateStatus } from '@/types';
 import { CandidateCard } from '@/components/CandidateCard';
 import { CandidateForm } from '@/components/CandidateForm';
+import { BulkStatusForm } from '@/components/candidate/BulkStatusForm';
 import { EmptyState } from '@/components/EmptyState';
 import { toast } from 'sonner';
 import { pageVariants, containerVariants } from '@/utils/animations';
@@ -35,6 +36,7 @@ export default function Candidates() {
   const [statusFilter, setStatusFilter] = useState<CandidateStatus | 'all'>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
@@ -124,10 +126,16 @@ export default function Candidates() {
             </p>
           </div>
           
-          <Button onClick={() => setShowAddDialog(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Novo Candidato
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowBulkStatusDialog(true)} variant="outline">
+              <ListFilter className="h-4 w-4 mr-2" />
+              Atualizar em Massa
+            </Button>
+            <Button onClick={() => setShowAddDialog(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Novo Candidato
+            </Button>
+          </div>
         </div>
         
         <div className="space-y-4">
@@ -229,6 +237,26 @@ export default function Candidates() {
               toast.success('Candidato adicionado com sucesso');
             }}
             onCancel={() => setShowAddDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Bulk Status Update Dialog */}
+      <Dialog open={showBulkStatusDialog} onOpenChange={setShowBulkStatusDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Atualizar Status em Massa</DialogTitle>
+            <DialogDescription>
+              Selecione os candidatos e o novo status para atualização em massa.
+            </DialogDescription>
+          </DialogHeader>
+          <BulkStatusForm
+            filterStatus={statusFilter !== 'all' ? statusFilter : undefined}
+            onSuccess={() => {
+              setShowBulkStatusDialog(false);
+              handleRefresh();
+            }}
+            onCancel={() => setShowBulkStatusDialog(false)}
           />
         </DialogContent>
       </Dialog>

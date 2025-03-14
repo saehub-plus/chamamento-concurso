@@ -1,9 +1,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreVertical, Edit, Trash, Check, X, User } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
   DialogContent, 
@@ -11,13 +10,6 @@ import {
   DialogTitle, 
   DialogDescription 
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -33,12 +25,11 @@ import { Candidate } from '@/types';
 import { CandidateForm } from './CandidateForm';
 import { 
   updateCandidateStatus, 
-  deleteCandidate, 
-  markAsCurrentUser,
-  clearCurrentUser
+  deleteCandidate
 } from '@/utils/storage';
 import { toast } from 'sonner';
 import { fadeVariants } from '@/utils/animations';
+import { CandidateActions } from './candidate/CandidateActions';
 
 interface CandidateCardProps {
   candidate: Candidate;
@@ -60,17 +51,6 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
     setShowDeleteDialog(false);
     onUpdate();
     toast.success('Candidato removido com sucesso');
-  };
-  
-  const handleMarkAsCurrentUser = () => {
-    if (candidate.isCurrentUser) {
-      clearCurrentUser();
-      toast.success('Não é mais você');
-    } else {
-      markAsCurrentUser(candidate.id);
-      toast.success('Marcado como você');
-    }
-    onUpdate();
   };
   
   const getStatusLabel = (status: Candidate['status']): string => {
@@ -98,76 +78,13 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
             <div className="font-medium">#{candidate.position}</div>
           </div>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem onClick={handleMarkAsCurrentUser}>
-                <User className="mr-2 h-4 w-4" />
-                {candidate.isCurrentUser ? 'Não é você' : 'É você'}
-              </DropdownMenuItem>
-              
-              <DropdownMenuSeparator />
-              
-              <DropdownMenuItem
-                onClick={() => handleStatusChange('classified')}
-                disabled={candidate.status === 'classified'}
-              >
-                <StatusBadge status="classified" size="sm" />
-                <span className="ml-2">Classificado</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem
-                onClick={() => handleStatusChange('called')}
-                disabled={candidate.status === 'called'}
-              >
-                <StatusBadge status="called" size="sm" />
-                <span className="ml-2">Convocado</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem
-                onClick={() => handleStatusChange('appointed')}
-                disabled={candidate.status === 'appointed'}
-              >
-                <StatusBadge status="appointed" size="sm" />
-                <span className="ml-2">Nomeado</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem
-                onClick={() => handleStatusChange('withdrawn')}
-                disabled={candidate.status === 'withdrawn'}
-              >
-                <StatusBadge status="withdrawn" size="sm" />
-                <span className="ml-2">Desistente</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem
-                onClick={() => handleStatusChange('eliminated')}
-                disabled={candidate.status === 'eliminated'}
-              >
-                <StatusBadge status="eliminated" size="sm" />
-                <span className="ml-2">Eliminado</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuSeparator />
-              
-              <DropdownMenuItem 
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <CandidateActions 
+            candidate={candidate}
+            onUpdate={onUpdate}
+            onEditClick={() => setShowEditDialog(true)}
+            onDeleteClick={() => setShowDeleteDialog(true)}
+            onStatusChange={handleStatusChange}
+          />
         </CardHeader>
         
         <CardContent className="p-4 pt-2">

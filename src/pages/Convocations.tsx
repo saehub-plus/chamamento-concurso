@@ -20,11 +20,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Calendar as CalendarIcon, CalendarPlus, Search, CalendarDays, XCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, CalendarPlus, Search, CalendarDays, XCircle, CalendarX, Calendar } from 'lucide-react';
 import { getConvocations } from '@/utils/storage';
 import { Convocation } from '@/types';
 import { ConvocationCard } from '@/components/ConvocationCard';
 import { ConvocationForm } from '@/components/ConvocationForm';
+import { BulkDateForm } from '@/components/convocation/BulkDateForm';
 import { EmptyState } from '@/components/EmptyState';
 import { toast } from 'sonner';
 import { pageVariants, containerVariants } from '@/utils/animations';
@@ -36,6 +37,7 @@ export default function Convocations() {
   const [hasCalled, setHasCalled] = useState<'all' | 'yes' | 'no'>('all');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showBulkDatesDialog, setShowBulkDatesDialog] = useState(false);
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
   // Load convocations from storage
@@ -113,10 +115,16 @@ export default function Convocations() {
             </p>
           </div>
           
-          <Button onClick={() => setShowAddDialog(true)}>
-            <CalendarPlus className="h-4 w-4 mr-2" />
-            Nova Convocação
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowBulkDatesDialog(true)} variant="outline">
+              <CalendarX className="h-4 w-4 mr-2" />
+              Datas em Massa
+            </Button>
+            <Button onClick={() => setShowAddDialog(true)}>
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Nova Convocação
+            </Button>
+          </div>
         </div>
         
         <div className="space-y-4">
@@ -189,6 +197,25 @@ export default function Convocations() {
               toast.success('Convocação registrada com sucesso');
             }}
             onCancel={() => setShowAddDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Dates Dialog */}
+      <Dialog open={showBulkDatesDialog} onOpenChange={setShowBulkDatesDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Datas em Massa</DialogTitle>
+            <DialogDescription>
+              Adicione várias datas sem convocações de uma vez.
+            </DialogDescription>
+          </DialogHeader>
+          <BulkDateForm
+            onSuccess={() => {
+              setShowBulkDatesDialog(false);
+              handleRefresh();
+            }}
+            onCancel={() => setShowBulkDatesDialog(false)}
           />
         </DialogContent>
       </Dialog>
