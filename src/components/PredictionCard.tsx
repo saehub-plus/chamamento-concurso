@@ -5,15 +5,17 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Rocket, Flag, Timer } from 'lucide-react';
+import { Trophy, Rocket, Flag, Timer, User } from 'lucide-react';
 import { scaleVariants } from '@/utils/animations';
 import { 
-  getCandidateByName, 
+  getCandidates, 
+  getCurrentUserId,
+  getCandidateById, 
   predictCandidateCall, 
   getCallProgress 
 } from '@/utils/storage';
 import { Button } from '@/components/ui/button';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useNavigate } from 'react-router-dom';
 
 // Motivational messages based on progress
 const getMotivationalMessage = (progress: number): { message: string; icon: JSX.Element } => {
@@ -46,8 +48,9 @@ const getMotivationalMessage = (progress: number): { message: string; icon: JSX.
 };
 
 export function PredictionCard() {
-  const [userName, setUserName] = useLocalStorage<string>('current-user-name', '');
+  const navigate = useNavigate();
   const [hasUser, setHasUser] = useState(false);
+  const [userName, setUserName] = useState('');
   const [progress, setProgress] = useState(0);
   const [prediction, setPrediction] = useState<{
     date: string | null;
@@ -63,14 +66,16 @@ export function PredictionCard() {
 
   // Calculate prediction and set user info
   useEffect(() => {
-    if (!userName) {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
       setHasUser(false);
       return;
     }
 
-    const candidate = getCandidateByName(userName);
+    const candidate = getCandidateById(currentUserId);
     if (candidate) {
       setHasUser(true);
+      setUserName(candidate.name);
       
       // Calculate prediction
       const candidatePrediction = predictCandidateCall(candidate.position);
@@ -89,7 +94,7 @@ export function PredictionCard() {
     } else {
       setHasUser(false);
     }
-  }, [userName]);
+  }, []);
 
   const motivational = getMotivationalMessage(progress);
   
@@ -108,25 +113,15 @@ export function PredictionCard() {
           <CardContent>
             <div className="space-y-4 flex flex-col items-center justify-center py-6">
               <p className="text-center text-muted-foreground">
-                Informe seu nome para visualizar sua previsão de chamamento
+                Selecione qual candidato é você para ver sua previsão de chamamento
               </p>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Digite seu nome completo"
-                className="w-full px-3 py-2 border rounded-md"
-              />
               <Button 
                 variant="default" 
                 className="w-full"
-                onClick={() => {
-                  if (userName && !getCandidateByName(userName)) {
-                    alert('Nome não encontrado na lista de candidatos');
-                  }
-                }}
+                onClick={() => navigate('/candidates')}
               >
-                Salvar
+                <User className="h-4 w-4 mr-2" />
+                Selecionar meu nome na lista
               </Button>
             </div>
           </CardContent>
@@ -146,6 +141,11 @@ export function PredictionCard() {
           <CardTitle className="text-lg">Sua Previsão de Chamamento</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-lg">{userName}</h3>
+          </div>
+          
           {/* Progress Indicator */}
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm">

@@ -4,6 +4,7 @@ import { Candidate, Convocation } from '@/types';
 // Storage keys
 const CANDIDATES_KEY = 'joinville-nurses-candidates';
 const CONVOCATIONS_KEY = 'joinville-nurses-convocations';
+const CURRENT_USER_KEY = 'joinville-nurses-current-user';
 
 // Retrieve data from localStorage
 export const getCandidates = (): Candidate[] => {
@@ -171,6 +172,48 @@ export const getCandidateByName = (name: string): Candidate | undefined => {
   const candidates = getCandidates();
   const lowerName = name.toLowerCase();
   return candidates.find(c => c.name.toLowerCase().includes(lowerName));
+};
+
+// Get current user ID from localStorage
+export const getCurrentUserId = (): string | null => {
+  return localStorage.getItem(CURRENT_USER_KEY);
+};
+
+// Set current user ID in localStorage
+export const setCurrentUserId = (id: string | null): void => {
+  if (id) {
+    localStorage.setItem(CURRENT_USER_KEY, id);
+  } else {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  }
+};
+
+// Mark candidate as current user
+export const markAsCurrentUser = (id: string): void => {
+  const candidates = getCandidates();
+  
+  // Reset all candidates
+  const updatedCandidates = candidates.map(c => ({
+    ...c,
+    isCurrentUser: c.id === id
+  }));
+  
+  saveCandidates(updatedCandidates);
+  setCurrentUserId(id);
+};
+
+// Clear current user
+export const clearCurrentUser = (): void => {
+  const candidates = getCandidates();
+  
+  // Reset all candidates
+  const updatedCandidates = candidates.map(c => ({
+    ...c,
+    isCurrentUser: false
+  }));
+  
+  saveCandidates(updatedCandidates);
+  setCurrentUserId(null);
 };
 
 // Calculate call prediction based on historical data

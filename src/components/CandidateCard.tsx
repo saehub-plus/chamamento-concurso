@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreVertical, Edit, Trash, Check, X } from 'lucide-react';
+import { MoreVertical, Edit, Trash, Check, X, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -31,8 +31,12 @@ import {
 import { StatusBadge } from './StatusBadge';
 import { Candidate } from '@/types';
 import { CandidateForm } from './CandidateForm';
-import { updateCandidateStatus, deleteCandidate, getCandidateByName } from '@/utils/storage';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { 
+  updateCandidateStatus, 
+  deleteCandidate, 
+  markAsCurrentUser,
+  clearCurrentUser
+} from '@/utils/storage';
 import { toast } from 'sonner';
 import { fadeVariants } from '@/utils/animations';
 
@@ -44,10 +48,6 @@ interface CandidateCardProps {
 export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [currentUserName] = useLocalStorage<string>('current-user-name', '');
-  
-  const isCurrentUser = currentUserName && 
-    candidate.name.toLowerCase().includes(currentUserName.toLowerCase());
   
   const handleStatusChange = (status: Candidate['status']) => {
     updateCandidateStatus(candidate.id, status);
@@ -60,6 +60,17 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
     setShowDeleteDialog(false);
     onUpdate();
     toast.success('Candidato removido com sucesso');
+  };
+  
+  const handleMarkAsCurrentUser = () => {
+    if (candidate.isCurrentUser) {
+      clearCurrentUser();
+      toast.success('Não é mais você');
+    } else {
+      markAsCurrentUser(candidate.id);
+      toast.success('Marcado como você');
+    }
+    onUpdate();
   };
   
   const getStatusLabel = (status: Candidate['status']): string => {
@@ -80,7 +91,7 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
       exit="exit"
       layout
     >
-      <Card className={`overflow-hidden ${isCurrentUser ? 'ring-2 ring-primary' : ''}`}>
+      <Card className={`overflow-hidden ${candidate.isCurrentUser ? 'ring-2 ring-primary' : ''}`}>
         <CardHeader className="p-4 pb-2 flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-4">
             <StatusBadge status={candidate.status} />
@@ -97,6 +108,11 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
               <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem onClick={handleMarkAsCurrentUser}>
+                <User className="mr-2 h-4 w-4" />
+                {candidate.isCurrentUser ? 'Não é você' : 'É você'}
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
@@ -157,7 +173,7 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
         <CardContent className="p-4 pt-2">
           <h3 className="font-semibold truncate" title={candidate.name}>
             {candidate.name}
-            {isCurrentUser && (
+            {candidate.isCurrentUser && (
               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
                 Você
               </span>
