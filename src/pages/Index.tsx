@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Plus, UserPlus, CalendarPlus } from 'lucide-react';
+import { Plus, UserPlus, CalendarPlus, ListPlus } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,9 @@ import {
 } from '@/components/ui/dialog';
 import { StatisticsCard } from '@/components/StatisticsCard';
 import { CandidateForm } from '@/components/CandidateForm';
+import { BulkCandidateForm } from '@/components/BulkCandidateForm';
 import { ConvocationForm } from '@/components/ConvocationForm';
+import { PredictionCard } from '@/components/PredictionCard';
 import { EmptyState } from '@/components/EmptyState';
 import { getCandidates, getConvocations, getCandidateStatusCounts } from '@/utils/storage';
 import { StatusCount, Candidate, Convocation } from '@/types';
@@ -24,6 +26,7 @@ import { pageVariants } from '@/utils/animations';
 
 export default function Index() {
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
+  const [showBulkCandidateDialog, setShowBulkCandidateDialog] = useState(false);
   const [showConvocationDialog, setShowConvocationDialog] = useState(false);
   const [statusCounts, setStatusCounts] = useState<StatusCount>({
     classified: 0,
@@ -75,7 +78,7 @@ export default function Index() {
             </p>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button 
               onClick={() => setShowCandidateDialog(true)}
               size="sm"
@@ -83,6 +86,15 @@ export default function Index() {
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Novo Candidato
+            </Button>
+            <Button 
+              onClick={() => setShowBulkCandidateDialog(true)}
+              size="sm"
+              variant="outline"
+              className="h-9"
+            >
+              <ListPlus className="h-4 w-4 mr-2" />
+              Adicionar em Massa
             </Button>
             <Button 
               onClick={() => setShowConvocationDialog(true)}
@@ -101,10 +113,14 @@ export default function Index() {
             description="Comece adicionando candidatos e registrando convocações para visualizar estatísticas aqui."
             icon={<Plus className="h-10 w-10 text-primary/60" />}
             action={
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3 justify-center">
                 <Button onClick={() => setShowCandidateDialog(true)}>
                   <UserPlus className="h-4 w-4 mr-2" />
                   Adicionar Candidato
+                </Button>
+                <Button variant="outline" onClick={() => setShowBulkCandidateDialog(true)}>
+                  <ListPlus className="h-4 w-4 mr-2" />
+                  Adicionar em Massa
                 </Button>
                 <Button variant="outline" onClick={() => setShowConvocationDialog(true)}>
                   <CalendarPlus className="h-4 w-4 mr-2" />
@@ -114,45 +130,50 @@ export default function Index() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <StatisticsCard statusCounts={statusCounts} total={totalCandidates} />
-            </div>
+          <div className="grid grid-cols-1 gap-6">
+            {/* Prediction Card */}
+            <PredictionCard />
             
-            <div className="space-y-6">
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Candidatos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{totalCandidates}</div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Candidatos registrados
-                  </p>
-                  <div className="mt-4">
-                    <Button asChild variant="outline" size="sm" className="w-full">
-                      <Link to="/candidates">Ver todos</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <StatisticsCard statusCounts={statusCounts} total={totalCandidates} />
+              </div>
               
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Convocações</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{totalConvocations}</div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Convocações registradas
-                  </p>
-                  <div className="mt-4">
-                    <Button asChild variant="outline" size="sm" className="w-full">
-                      <Link to="/convocations">Ver todas</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Candidatos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{totalCandidates}</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Candidatos registrados
+                    </p>
+                    <div className="mt-4">
+                      <Button asChild variant="outline" size="sm" className="w-full">
+                        <Link to="/candidates">Ver todos</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Convocações</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{totalConvocations}</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Convocações registradas
+                    </p>
+                    <div className="mt-4">
+                      <Button asChild variant="outline" size="sm" className="w-full">
+                        <Link to="/convocations">Ver todas</Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         )}
@@ -174,6 +195,26 @@ export default function Index() {
               toast.success('Candidato adicionado com sucesso');
             }}
             onCancel={() => setShowCandidateDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Bulk Add Candidates Dialog */}
+      <Dialog open={showBulkCandidateDialog} onOpenChange={setShowBulkCandidateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Candidatos em Massa</DialogTitle>
+            <DialogDescription>
+              Cole a lista de nomes, um por linha. Eles serão adicionados em ordem, começando da posição especificada.
+            </DialogDescription>
+          </DialogHeader>
+          <BulkCandidateForm
+            onSuccess={(count) => {
+              setShowBulkCandidateDialog(false);
+              handleRefresh();
+              toast.success(`${count} candidatos adicionados com sucesso`);
+            }}
+            onCancel={() => setShowBulkCandidateDialog(false)}
           />
         </DialogContent>
       </Dialog>

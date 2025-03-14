@@ -13,6 +13,7 @@ export interface Candidate {
   status: CandidateStatus;
   createdAt: string;
   updatedAt: string;
+  isCurrentUser?: boolean; // Flag to identify the current user
 }
 
 export interface Convocation {
@@ -30,4 +31,11 @@ export interface StatusCount {
   withdrawn: number;
   eliminated: number;
   appointed: number;
+}
+
+export interface CallPrediction {
+  predictedDate: Date | null;
+  callsPerMonth: number;
+  remainingCalls: number;
+  confidence: 'high' | 'medium' | 'low';
 }

@@ -1,17 +1,9 @@
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MoreVertical, Edit, Trash2 } from 'lucide-react';
-import { 
-  Card, 
-  CardContent
-} from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Edit, Trash, Check, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
   DialogContent, 
@@ -19,13 +11,30 @@ import {
   DialogTitle, 
   DialogDescription 
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 import { StatusBadge } from './StatusBadge';
-import { CandidateForm } from './CandidateForm';
 import { Candidate } from '@/types';
-import { deleteCandidate, updateCandidateStatus } from '@/utils/storage';
+import { CandidateForm } from './CandidateForm';
+import { updateCandidateStatus, deleteCandidate, getCandidateByName } from '@/utils/storage';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { toast } from 'sonner';
-import { cardVariants } from '@/utils/animations';
+import { fadeVariants } from '@/utils/animations';
 
 interface CandidateCardProps {
   candidate: Candidate;
@@ -35,89 +44,132 @@ interface CandidateCardProps {
 export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = () => {
-    setIsDeleting(true);
-    
-    setTimeout(() => {
-      deleteCandidate(candidate.id);
-      setShowDeleteDialog(false);
-      setIsDeleting(false);
-      toast.success('Candidato removido com sucesso');
-      onUpdate();
-    }, 500);
-  };
-
+  const [currentUserName] = useLocalStorage<string>('current-user-name', '');
+  
+  const isCurrentUser = currentUserName && 
+    candidate.name.toLowerCase().includes(currentUserName.toLowerCase());
+  
   const handleStatusChange = (status: Candidate['status']) => {
     updateCandidateStatus(candidate.id, status);
-    setShowStatusDialog(false);
-    toast.success('Status atualizado com sucesso');
     onUpdate();
+    toast.success(`Status alterado para ${getStatusLabel(status)}`);
   };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  
+  const handleDelete = () => {
+    deleteCandidate(candidate.id);
+    setShowDeleteDialog(false);
+    onUpdate();
+    toast.success('Candidato removido com sucesso');
   };
-
+  
+  const getStatusLabel = (status: Candidate['status']): string => {
+    switch (status) {
+      case 'classified': return 'Classificado';
+      case 'called': return 'Convocado';
+      case 'withdrawn': return 'Desistente';
+      case 'eliminated': return 'Eliminado';
+      case 'appointed': return 'Nomeado';
+    }
+  };
+  
   return (
-    <>
-      <motion.div
-        variants={cardVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        layout
-      >
-        <Card className="h-full overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <div className="text-xl font-medium w-8 h-8 flex items-center justify-center rounded-full bg-primary/10 text-primary">
-                  {candidate.position}
-                </div>
-                <div>
-                  <h3 className="font-medium">{candidate.name}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Desde {formatDate(candidate.createdAt)}
-                  </p>
-                </div>
-              </div>
-                
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">Menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[180px]">
-                  <DropdownMenuItem onClick={() => setShowStatusDialog(true)}>
-                    Alterar status
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+    <motion.div
+      variants={fadeVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      layout
+    >
+      <Card className={`overflow-hidden ${isCurrentUser ? 'ring-2 ring-primary' : ''}`}>
+        <CardHeader className="p-4 pb-2 flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-4">
+            <StatusBadge status={candidate.status} />
+            <div className="font-medium">#{candidate.position}</div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
               
-            <div className="mt-4">
-              <StatusBadge status={candidate.status} />
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('classified')}
+                disabled={candidate.status === 'classified'}
+              >
+                <StatusBadge status="classified" size="sm" />
+                <span className="ml-2">Classificado</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('called')}
+                disabled={candidate.status === 'called'}
+              >
+                <StatusBadge status="called" size="sm" />
+                <span className="ml-2">Convocado</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('appointed')}
+                disabled={candidate.status === 'appointed'}
+              >
+                <StatusBadge status="appointed" size="sm" />
+                <span className="ml-2">Nomeado</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('withdrawn')}
+                disabled={candidate.status === 'withdrawn'}
+              >
+                <StatusBadge status="withdrawn" size="sm" />
+                <span className="ml-2">Desistente</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem
+                onClick={() => handleStatusChange('eliminated')}
+                disabled={candidate.status === 'eliminated'}
+              >
+                <StatusBadge status="eliminated" size="sm" />
+                <span className="ml-2">Eliminado</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem 
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardHeader>
+        
+        <CardContent className="p-4 pt-2">
+          <h3 className="font-semibold truncate" title={candidate.name}>
+            {candidate.name}
+            {isCurrentUser && (
+              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+                Você
+              </span>
+            )}
+          </h3>
+        </CardContent>
+        
+        <CardFooter className="p-4 pt-0 text-xs text-muted-foreground">
+          Atualizado em {new Date(candidate.updatedAt).toLocaleDateString()}
+        </CardFooter>
+      </Card>
+      
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-md">
@@ -127,7 +179,7 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
               Atualize as informações do candidato abaixo.
             </DialogDescription>
           </DialogHeader>
-          <CandidateForm 
+          <CandidateForm
             initialData={candidate}
             onSuccess={() => {
               setShowEditDialog(false);
@@ -138,61 +190,24 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
           />
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Excluir Candidato</DialogTitle>
-            <DialogDescription>
+      
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Candidato</AlertDialogTitle>
+            <AlertDialogDescription>
               Tem certeza que deseja excluir este candidato? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Status Change Dialog */}
-      <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Alterar Status</DialogTitle>
-            <DialogDescription>
-              Selecione o novo status para o candidato {candidate.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 py-4">
-            {(['classified', 'called', 'withdrawn', 'eliminated', 'appointed'] as Candidate['status'][]).map((status) => (
-              <Button
-                key={status}
-                variant={candidate.status === status ? "default" : "outline"}
-                className="justify-start h-auto py-4"
-                onClick={() => handleStatusChange(status)}
-              >
-                <StatusBadge status={status} className="mr-2" />
-                <span>
-                  {status === 'classified' && 'Classificado'}
-                  {status === 'called' && 'Convocado'}
-                  {status === 'withdrawn' && 'Desistente'}
-                  {status === 'eliminated' && 'Eliminado'}
-                  {status === 'appointed' && 'Nomeado'}
-                </span>
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
   );
 }
