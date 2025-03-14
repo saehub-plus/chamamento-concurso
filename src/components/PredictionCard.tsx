@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Trophy, Rocket, Flag, Timer, User } from 'lucide-react';
+import { Trophy, Rocket, Flag, Timer, User, Calendar, TrendingUp, Clock } from 'lucide-react';
 import { scaleVariants } from '@/utils/animations';
 import { 
   getCandidates, 
@@ -51,15 +51,28 @@ export function PredictionCard() {
   const navigate = useNavigate();
   const [hasUser, setHasUser] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userPosition, setUserPosition] = useState(0);
   const [progress, setProgress] = useState(0);
   const [prediction, setPrediction] = useState<{
     date: string | null;
-    callsPerMonth: number;
+    businessDays: number;
+    averageCallsPerDay: {
+      overall: number;
+      last30Days: number;
+      last90Days: number;
+      dynamic: number;
+    };
     remainingCalls: number;
     confidence: 'high' | 'medium' | 'low';
   }>({
     date: null,
-    callsPerMonth: 0,
+    businessDays: 0,
+    averageCallsPerDay: {
+      overall: 0,
+      last30Days: 0,
+      last90Days: 0,
+      dynamic: 0
+    },
     remainingCalls: 0,
     confidence: 'low'
   });
@@ -76,14 +89,16 @@ export function PredictionCard() {
     if (candidate) {
       setHasUser(true);
       setUserName(candidate.name);
+      setUserPosition(candidate.position);
       
       // Calculate prediction
       const candidatePrediction = predictCandidateCall(candidate.position);
       setPrediction({
         date: candidatePrediction.predictedDate ? 
-          format(candidatePrediction.predictedDate, "MMMM 'de' yyyy", { locale: ptBR }) : 
+          format(candidatePrediction.predictedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 
           null,
-        callsPerMonth: candidatePrediction.callsPerMonth,
+        businessDays: candidatePrediction.estimatedBusinessDays,
+        averageCallsPerDay: candidatePrediction.averageCallsPerDay,
         remainingCalls: candidatePrediction.remainingCalls,
         confidence: candidatePrediction.confidence
       });
@@ -144,6 +159,9 @@ export function PredictionCard() {
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-lg">{userName}</h3>
+            <span className="text-muted-foreground text-sm">
+              (Posição #{userPosition})
+            </span>
           </div>
           
           {/* Progress Indicator */}
@@ -177,33 +195,71 @@ export function PredictionCard() {
             </div>
           </div>
           
-          {/* Prediction Details */}
+          {/* Detailed Prediction Analysis */}
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-1 gap-3">
               {prediction.date && (
                 <div className="bg-primary/5 rounded-lg p-3">
-                  <div className="text-sm text-muted-foreground">Previsão para chamamento</div>
-                  <div className="font-semibold">{prediction.date}</div>
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground flex items-center">
+                      <Calendar className="h-4 w-4 mr-1" />
+                      Previsão para chamamento
+                    </div>
+                    <div className="text-xs bg-primary/20 px-2 py-0.5 rounded">
+                      {prediction.confidence === 'high' ? 'Alta confiança' : 
+                       prediction.confidence === 'medium' ? 'Média confiança' : 'Baixa confiança'}
+                    </div>
+                  </div>
+                  <div className="font-semibold mt-1">{prediction.date}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Aproximadamente {prediction.businessDays} dias úteis
+                  </div>
                 </div>
               )}
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-primary/5 rounded-lg p-3">
-                  <div className="text-sm text-muted-foreground">Chamamentos por mês</div>
-                  <div className="font-semibold">{prediction.callsPerMonth}</div>
+                  <div className="text-sm text-muted-foreground flex items-center">
+                    <TrendingUp className="h-4 w-4 mr-1" />
+                    Média de chamamentos por dia
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Geral:</span>
+                      <span className="font-medium">{prediction.averageCallsPerDay.overall}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-muted-foreground">Últimos 30 dias:</span>
+                      <span className="font-medium">{prediction.averageCallsPerDay.last30Days}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-muted-foreground">Últimos 90 dias:</span>
+                      <span className="font-medium">{prediction.averageCallsPerDay.last90Days}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1 pt-1 border-t">
+                      <span className="text-xs font-medium">Média ponderada:</span>
+                      <span className="font-semibold text-primary">{prediction.averageCallsPerDay.dynamic}</span>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="bg-primary/5 rounded-lg p-3">
-                  <div className="text-sm text-muted-foreground">Candidatos na sua frente</div>
-                  <div className="font-semibold">{prediction.remainingCalls}</div>
-                </div>
-              </div>
-              
-              <div className="bg-primary/5 rounded-lg p-3">
-                <div className="text-sm text-muted-foreground">Confiança da previsão</div>
-                <div className="font-semibold">
-                  {prediction.confidence === 'high' ? 'Alta' : 
-                   prediction.confidence === 'medium' ? 'Média' : 'Baixa'}
+                  <div className="text-sm text-muted-foreground flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Situação atual
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Candidatos à sua frente:</span>
+                      <span className="font-medium">{prediction.remainingCalls}</span>
+                    </div>
+                    
+                    <div className="mt-4 pt-2 border-t">
+                      <div className="text-xs text-muted-foreground">
+                        A previsão considera o histórico de chamamentos e calcula uma média dinâmica, priorizando os dados mais recentes.
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

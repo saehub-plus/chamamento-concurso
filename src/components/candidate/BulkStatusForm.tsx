@@ -38,7 +38,7 @@ interface BulkStatusFormProps {
   onCancel: () => void;
 }
 
-export function BulkStatusForm({ filterStatus, onSuccess, onCancel }: BulkStatusFormProps) {
+export function BulkStatusForm({ filterStatus = 'classified', onSuccess, onCancel }: BulkStatusFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   
@@ -155,7 +155,7 @@ export function BulkStatusForm({ filterStatus, onSuccess, onCancel }: BulkStatus
         
         <div className="space-y-2">
           <div className="flex justify-between mb-2">
-            <FormLabel>Selecione os candidatos</FormLabel>
+            <FormLabel>Selecione os candidatos classificados</FormLabel>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={handleSelectAll}>
                 Selecionar todos
@@ -174,7 +174,7 @@ export function BulkStatusForm({ filterStatus, onSuccess, onCancel }: BulkStatus
                 <div className="space-y-2">
                   {candidates.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic">
-                      Nenhum candidato encontrado
+                      Nenhum candidato classificado encontrado
                     </p>
                   ) : (
                     candidates.map((candidate) => (

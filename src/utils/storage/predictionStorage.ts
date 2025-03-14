@@ -1,11 +1,161 @@
 
 import { getConvocations } from './convocationStorage';
 import { getCandidates } from './candidateStorage';
+import { addBusinessDays, differenceInBusinessDays, isWeekend } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+// Check if a date is a business day (not weekend)
+const isBusinessDay = (date: Date): boolean => {
+  return !isWeekend(date);
+};
+
+// Calculate total candidates called up to a specific date
+const getCandidatesCalledByDate = () => {
+  const convocations = getConvocations();
+  const candidates = getCandidates();
+
+  // Map of date -> number of candidates called
+  const dateMap: { [key: string]: number } = {};
+  
+  // Get called candidates with their dates
+  const calledCandidates = candidates.filter(c => 
+    c.status === 'called' || c.status === 'appointed'
+  );
+  
+  // Create a sorted list of all business days from the first to the last convocation
+  const sortedConvocations = [...convocations]
+    .filter(c => c.hasCalled)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  if (sortedConvocations.length === 0) {
+    return [];
+  }
+  
+  // For each convocation with calls, record how many candidates were called
+  sortedConvocations.forEach(convocation => {
+    const dateStr = new Date(convocation.date).toISOString().split('T')[0];
+    const candidatesCalled = convocation.calledCandidates?.length || 0;
+    dateMap[dateStr] = (dateMap[dateStr] || 0) + candidatesCalled;
+  });
+  
+  // Convert to array of {date, totalCalled}
+  const result = Object.entries(dateMap).map(([dateStr, called]) => ({
+    date: new Date(dateStr),
+    called,
+  }));
+  
+  // Sort by date
+  result.sort((a, b) => a.date.getTime() - b.date.getTime());
+  
+  // Add cumulative total
+  let cumulativeTotal = 0;
+  const finalResult = result.map(item => {
+    cumulativeTotal += item.called;
+    return {
+      date: item.date,
+      called: item.called,
+      cumulativeTotal
+    };
+  });
+  
+  return finalResult;
+};
+
+// Calculate regression slope for call rate
+const calculateRegressionSlope = (data: { date: Date; cumulativeTotal: number }[]): number => {
+  if (data.length < 2) return 0;
+  
+  // Use only business days for x-axis
+  const baseDate = data[0].date;
+  const points = data.map(point => ({
+    x: differenceInBusinessDays(point.date, baseDate),
+    y: point.cumulativeTotal
+  }));
+  
+  // Simple linear regression
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumXX = 0;
+  const n = points.length;
+  
+  for (const point of points) {
+    sumX += point.x;
+    sumY += point.y;
+    sumXY += point.x * point.y;
+    sumXX += point.x * point.x;
+  }
+  
+  // Calculate slope (calls per business day)
+  if (sumXX === sumX * sumX / n) {
+    return 0; // Avoid division by zero
+  }
+  
+  const slope = (sumXY - (sumX * sumY) / n) / (sumXX - (sumX * sumX) / n);
+  return slope;
+};
+
+// Calculate recent average call rates (last 30 and 90 business days)
+const calculateRecentAverages = (data: { date: Date; called: number; cumulativeTotal: number }[]) => {
+  if (data.length === 0) {
+    return { last30Days: 0, last90Days: 0 };
+  }
+  
+  const today = new Date();
+  const last30BusinessDays = data.filter(item => 
+    differenceInBusinessDays(today, item.date) <= 30
+  );
+  
+  const last90BusinessDays = data.filter(item => 
+    differenceInBusinessDays(today, item.date) <= 90
+  );
+  
+  // Calculate totals
+  const total30Days = last30BusinessDays.reduce((sum, item) => sum + item.called, 0);
+  const total90Days = last90BusinessDays.reduce((sum, item) => sum + item.called, 0);
+  
+  // Calculate averages per business day
+  const days30 = last30BusinessDays.length > 0 ? last30BusinessDays.length : 1;
+  const days90 = last90BusinessDays.length > 0 ? last90BusinessDays.length : 1;
+  
+  return {
+    last30Days: total30Days / days30,
+    last90Days: total90Days / days90
+  };
+};
+
+// Calculate weighted dynamic average
+const calculateDynamicAverage = (recent: { last30Days: number, last90Days: number }, regression: number) => {
+  // If we don't have enough data, default to regression or a small positive number
+  if (recent.last30Days === 0 && recent.last90Days === 0) {
+    return Math.max(regression, 0.1);
+  }
+  
+  // Weight recent data more heavily (70% last 30 days, 30% last 90 days)
+  const weight30 = 0.7;
+  const weight90 = 0.3;
+  
+  // If one of the periods has no data, use the other
+  if (recent.last30Days === 0) {
+    return recent.last90Days;
+  }
+  if (recent.last90Days === 0) {
+    return recent.last30Days;
+  }
+  
+  return (recent.last30Days * weight30) + (recent.last90Days * weight90);
+};
 
 // Calculate call prediction based on historical data
 export const predictCandidateCall = (candidatePosition: number): { 
   predictedDate: Date | null;
-  callsPerMonth: number;
+  estimatedBusinessDays: number;
+  averageCallsPerDay: {
+    overall: number;
+    last30Days: number;
+    last90Days: number;
+    dynamic: number;
+  };
   remainingCalls: number;
   confidence: 'high' | 'medium' | 'low';
 } => {
@@ -15,59 +165,104 @@ export const predictCandidateCall = (candidatePosition: number): {
   // No convocations yet
   if (convocations.length === 0) {
     return { 
-      predictedDate: null, 
-      callsPerMonth: 0, 
+      predictedDate: null,
+      estimatedBusinessDays: 0,
+      averageCallsPerDay: {
+        overall: 0,
+        last30Days: 0,
+        last90Days: 0,
+        dynamic: 0
+      },
       remainingCalls: 0,
       confidence: 'low'
     };
   }
   
-  // Get called and classified candidates
-  const calledCount = candidates.filter(c => c.status === 'called' || c.status === 'appointed').length;
-  const classifiedBeforePosition = candidates.filter(c => c.status === 'classified' && c.position < candidatePosition).length;
+  // Get data for analysis
+  const calledData = getCandidatesCalledByDate();
   
-  // Get date range of convocations
-  const dates = convocations
-    .filter(c => c.hasCalled)
-    .map(c => new Date(c.date).getTime());
-  
-  if (dates.length < 2) {
+  if (calledData.length === 0) {
     return { 
-      predictedDate: null, 
-      callsPerMonth: 0, 
-      remainingCalls: classifiedBeforePosition,
+      predictedDate: null,
+      estimatedBusinessDays: 0,
+      averageCallsPerDay: {
+        overall: 0,
+        last30Days: 0,
+        last90Days: 0,
+        dynamic: 0
+      },
+      remainingCalls: 0,
       confidence: 'low'
     };
   }
   
-  const oldestDate = Math.min(...dates);
-  const newestDate = Math.max(...dates);
-  const monthsDiff = (newestDate - oldestDate) / (1000 * 60 * 60 * 24 * 30);
+  // Calculate metrics
+  const regressionSlope = calculateRegressionSlope(calledData);
+  const recentAverages = calculateRecentAverages(calledData);
+  const dynamicAverage = calculateDynamicAverage(recentAverages, regressionSlope);
   
-  // Calculate calls per month
-  const callsPerMonth = monthsDiff > 0 ? calledCount / monthsDiff : 0;
+  // Get the highest position that has been called
+  const highestCalledPosition = Math.max(
+    0,
+    ...candidates
+      .filter(c => c.status === 'called' || c.status === 'appointed')
+      .map(c => c.position)
+  );
   
-  // Predict date
-  const remainingCalls = classifiedBeforePosition;
-  const monthsUntilCall = callsPerMonth > 0 ? remainingCalls / callsPerMonth : 0;
+  // Calculate remaining calls before reaching the candidate
+  const remainingCalls = candidatePosition - highestCalledPosition;
   
-  let predictedDate = null;
-  if (monthsUntilCall > 0) {
-    predictedDate = new Date();
-    predictedDate.setMonth(predictedDate.getMonth() + monthsUntilCall);
+  // If candidate is already called or position is invalid
+  if (remainingCalls <= 0) {
+    return {
+      predictedDate: null,
+      estimatedBusinessDays: 0,
+      averageCallsPerDay: {
+        overall: regressionSlope,
+        last30Days: recentAverages.last30Days,
+        last90Days: recentAverages.last90Days,
+        dynamic: dynamicAverage
+      },
+      remainingCalls: 0,
+      confidence: 'high'
+    };
   }
   
-  // Determine confidence
+  // Calculate business days until call
+  const businessDaysUntilCall = dynamicAverage > 0 
+    ? Math.ceil(remainingCalls / dynamicAverage) 
+    : 1000; // Large number if no rate available
+  
+  // Get the most recent convocation date
+  const sortedConvocations = [...convocations]
+    .filter(c => c.hasCalled)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  let baseDate = new Date();
+  if (sortedConvocations.length > 0) {
+    baseDate = new Date(sortedConvocations[0].date);
+  }
+  
+  // Calculate predicted date by adding business days
+  const predictedDate = addBusinessDays(baseDate, businessDaysUntilCall);
+  
+  // Determine confidence level
   let confidence: 'high' | 'medium' | 'low' = 'low';
-  if (convocations.length > 5 && monthsDiff > 3) {
+  if (calledData.length > 5 && dynamicAverage > 0) {
     confidence = 'high';
-  } else if (convocations.length > 2) {
+  } else if (calledData.length > 2 && dynamicAverage > 0) {
     confidence = 'medium';
   }
   
   return {
     predictedDate,
-    callsPerMonth: parseFloat(callsPerMonth.toFixed(1)),
+    estimatedBusinessDays: businessDaysUntilCall,
+    averageCallsPerDay: {
+      overall: parseFloat(regressionSlope.toFixed(2)),
+      last30Days: parseFloat(recentAverages.last30Days.toFixed(2)),
+      last90Days: parseFloat(recentAverages.last90Days.toFixed(2)),
+      dynamic: parseFloat(dynamicAverage.toFixed(2))
+    },
     remainingCalls,
     confidence
   };

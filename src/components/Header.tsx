@@ -30,6 +30,11 @@ export function Header() {
       <div className="layout-container">
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/2ffdbb6f-3cb5-4fa5-9565-5d87797f474f.png" 
+              alt="Prefeitura de Joinville" 
+              className="h-10 w-auto"
+            />
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
