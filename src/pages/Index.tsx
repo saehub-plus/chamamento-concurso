@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -20,8 +19,8 @@ import { ConvocationForm } from '@/components/ConvocationForm';
 import { PredictionCard } from '@/components/PredictionCard';
 import { DocumentStatusCard } from '@/components/DocumentStatusCard';
 import { EmptyState } from '@/components/EmptyState';
-import { getCandidates, getConvocations, getCandidateStatusCounts } from '@/utils/storage';
-import { StatusCount, Candidate, Convocation } from '@/types';
+import { getCandidates, getConvocations, getCandidateStatusCounts, getDocumentsStatus } from '@/utils/storage';
+import { StatusCount, Candidate, Convocation, DocumentsStatus } from '@/types';
 import { toast } from 'sonner';
 import { pageVariants } from '@/utils/animations';
 
@@ -40,17 +39,26 @@ export default function Index() {
   const [totalConvocations, setTotalConvocations] = useState(0);
   const [shouldRefresh, setShouldRefresh] = useState(false);
   const [hasData, setHasData] = useState(false);
+  const [documentStatus, setDocumentStatus] = useState<DocumentsStatus>({
+    total: 0,
+    completed: 0,
+    expired: 0,
+    missing: 0,
+    percentage: 0
+  });
 
   useEffect(() => {
     const loadData = () => {
       const candidates = getCandidates();
       const convocations = getConvocations();
       const counts = getCandidateStatusCounts();
+      const docStatus = getDocumentsStatus();
       
       setStatusCounts(counts);
       setTotalCandidates(candidates.length);
       setTotalConvocations(convocations.length);
       setHasData(candidates.length > 0 || convocations.length > 0);
+      setDocumentStatus(docStatus);
     };
     
     loadData();
@@ -141,7 +149,7 @@ export default function Index() {
               </div>
               
               <div className="space-y-6">
-                <DocumentStatusCard />
+                <DocumentStatusCard status={documentStatus} />
                 
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2">
