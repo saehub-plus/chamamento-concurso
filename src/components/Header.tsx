@@ -1,7 +1,7 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutGrid, Users, Calendar } from 'lucide-react';
+import { LayoutGrid, Users, Calendar, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -22,6 +22,11 @@ export function Header() {
       path: '/convocations', 
       label: 'Convocações', 
       icon: <Calendar className="w-4 h-4 mr-2" /> 
+    },
+    { 
+      path: '/documents', 
+      label: 'Documentos', 
+      icon: <FileText className="w-4 h-4 mr-2" /> 
     }
   ];
 

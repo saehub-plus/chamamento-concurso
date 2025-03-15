@@ -1,4 +1,3 @@
-
 export type CandidateStatus = 
   | 'classified' // Classificado
   | 'called'     // Convocado
@@ -38,4 +37,16 @@ export interface CallPrediction {
   callsPerMonth: number;
   remainingCalls: number;
   confidence: 'high' | 'medium' | 'low';
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  hasDocument: boolean;
+  hasPhysicalCopy: boolean;
+  isValid: boolean;
+  driveLink?: string;
+  expirationDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
