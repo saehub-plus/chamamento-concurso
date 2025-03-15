@@ -125,8 +125,8 @@ export const getDocumentsStatus = (): DocumentsStatus => {
   const documents = getDocuments();
   const total = documents.length;
   
-  // Count completed documents (has document and is valid)
-  const completed = documents.filter(doc => doc.hasDocument && doc.isValid).length;
+  // Count completed documents (has document)
+  const completed = documents.filter(doc => doc.hasDocument).length;
   
   // Count expired documents
   const expired = documents.filter(doc => 
@@ -150,6 +150,64 @@ export const getDocumentsStatus = (): DocumentsStatus => {
   };
 };
 
+// Check if vaccine document is complete
+export const isVaccineComplete = (document: Document): boolean => {
+  if (!document.vaccineDoses || document.vaccineDoses.length === 0) return false;
+  
+  if (document.name === "Vacina Hepatite B") {
+    if (document.vaccineDoses.length !== 3) return false;
+    
+    const firstDose = parseISO(document.vaccineDoses[0]);
+    const secondDose = parseISO(document.vaccineDoses[1]);
+    const thirdDose = parseISO(document.vaccineDoses[2]);
+    
+    // Second dose should be at least 1 month after first dose
+    const secondDoseValid = secondDose.getTime() >= new Date(firstDose.getFullYear(), firstDose.getMonth() + 1, firstDose.getDate()).getTime();
+    
+    // Third dose should be at least 6 months after first dose
+    const thirdDoseValid = thirdDose.getTime() >= new Date(firstDose.getFullYear(), firstDose.getMonth() + 6, firstDose.getDate()).getTime();
+    
+    return secondDoseValid && thirdDoseValid;
+  } 
+  else if (document.name === "Vacina DT") {
+    if (document.vaccineDoses.length !== 3) return false;
+    
+    const firstDose = parseISO(document.vaccineDoses[0]);
+    const secondDose = parseISO(document.vaccineDoses[1]);
+    const thirdDose = parseISO(document.vaccineDoses[2]);
+    
+    // 60 days between doses
+    const secondDoseValid = secondDose.getTime() >= new Date(firstDose.getFullYear(), firstDose.getMonth(), firstDose.getDate() + 60).getTime();
+    const thirdDoseValid = thirdDose.getTime() >= new Date(secondDose.getFullYear(), secondDose.getMonth(), secondDose.getDate() + 60).getTime();
+    
+    return secondDoseValid && thirdDoseValid;
+  } 
+  else if (document.name === "Vacina Tríplice Viral") {
+    if (!document.userAge) return false;
+    
+    // 2 doses for 20-29 years, 1 dose for 30-59 years
+    if (document.userAge >= 20 && document.userAge <= 29) {
+      return document.vaccineDoses.length >= 2;
+    } else if (document.userAge >= 30 && document.userAge <= 59) {
+      return document.vaccineDoses.length >= 1;
+    }
+  }
+  
+  return false;
+};
+
+// Check if state document is complete
+export const isStateDocumentComplete = (document: Document): boolean => {
+  if (!document.states || document.states.length === 0) return false;
+  
+  // Check if all selected states have links
+  if (!document.stateLinks) return false;
+  
+  return document.states.every(state => 
+    document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
+  );
+};
+
 // Hook to use documents
 export const useDocuments = () => {
   const [documents, setDocuments] = useLocalStorage<Document[]>(STORAGE_KEY, []);
@@ -162,7 +220,7 @@ export const useDocuments = () => {
         name: "Exame de Acuidade Visual",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '1year',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -172,7 +230,7 @@ export const useDocuments = () => {
         name: "Hbs ag",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '3months',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -182,7 +240,7 @@ export const useDocuments = () => {
         name: "Anti Hbs",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '3months',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -192,8 +250,9 @@ export const useDocuments = () => {
         name: "Vacina DT",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
+        vaccineDoses: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -202,8 +261,9 @@ export const useDocuments = () => {
         name: "Vacina Tríplice Viral",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
+        vaccineDoses: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -212,8 +272,9 @@ export const useDocuments = () => {
         name: "Vacina Hepatite B",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
+        vaccineDoses: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -222,7 +283,7 @@ export const useDocuments = () => {
         name: "Documento de Identidade",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '10years',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -232,7 +293,7 @@ export const useDocuments = () => {
         name: "CPF",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -242,7 +303,7 @@ export const useDocuments = () => {
         name: "Certidão de Quitação Eleitoral",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -252,7 +313,7 @@ export const useDocuments = () => {
         name: "Certidão de Registro Civil",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -262,7 +323,7 @@ export const useDocuments = () => {
         name: "Diploma ou Histórico Escolar",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -272,7 +333,7 @@ export const useDocuments = () => {
         name: "Registro no Conselho Profissional (SC)",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '5years',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -282,9 +343,10 @@ export const useDocuments = () => {
         name: "Certidão Negativa Ético-Disciplinar do Conselho",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '30days',
         states: [],
+        stateLinks: {},
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -293,8 +355,10 @@ export const useDocuments = () => {
         name: "Comprovante de Quitação da Anuidade do Conselho",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '30days',
+        states: [],
+        stateLinks: {},
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -303,7 +367,7 @@ export const useDocuments = () => {
         name: "Certificado de Quitação do Serviço Militar",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -313,7 +377,7 @@ export const useDocuments = () => {
         name: "Comprovante de Endereço",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '90days',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -323,7 +387,7 @@ export const useDocuments = () => {
         name: "Carteira de Trabalho",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -333,7 +397,7 @@ export const useDocuments = () => {
         name: "Comprovante de PIS/PASEP",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -343,7 +407,7 @@ export const useDocuments = () => {
         name: "Declaração de Não Penalidades",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -353,7 +417,7 @@ export const useDocuments = () => {
         name: "Declaração de Não Acumulação de Cargos",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -363,7 +427,7 @@ export const useDocuments = () => {
         name: "Declaração de Bens",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -373,7 +437,7 @@ export const useDocuments = () => {
         name: "Certidão Negativa de Antecedentes Criminais",
         hasDocument: false,
         hasPhysicalCopy: false,
-        isValid: false,
+        isValid: true,
         validityPeriod: '90days',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -383,21 +447,38 @@ export const useDocuments = () => {
     setDocuments(defaultDocuments);
   }
 
+  // Calculate document status including special validation for vaccines and state-based documents
+  const documentStatus = {
+    total: documents.length,
+    completed: documents.filter(doc => {
+      if (doc.hasDocument) {
+        // For vaccine documents
+        if (["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(doc.name)) {
+          return isVaccineComplete(doc);
+        } 
+        // For state-based documents
+        else if (["Certidão Negativa Ético-Disciplinar do Conselho", "Comprovante de Quitação da Anuidade do Conselho"].includes(doc.name)) {
+          return isStateDocumentComplete(doc);
+        }
+        // For regular documents
+        return true;
+      }
+      return false;
+    }).length,
+    expired: documents.filter(doc => 
+      doc.hasDocument && 
+      doc.expirationDate && 
+      isDocumentExpired(doc)
+    ).length,
+    missing: documents.filter(doc => !doc.hasDocument).length,
+    percentage: documents.length > 0 
+      ? Math.round((documents.filter(doc => doc.hasDocument).length / documents.length) * 100) 
+      : 0
+  };
+
   return {
     documents,
-    documentStatus: {
-      total: documents.length,
-      completed: documents.filter(doc => doc.hasDocument && doc.isValid).length,
-      expired: documents.filter(doc => 
-        doc.hasDocument && 
-        doc.expirationDate && 
-        isDocumentExpired(doc)
-      ).length,
-      missing: documents.filter(doc => !doc.hasDocument).length,
-      percentage: documents.length > 0 
-        ? Math.round((documents.filter(doc => doc.hasDocument && doc.isValid).length / documents.length) * 100) 
-        : 0
-    },
+    documentStatus,
     addDocument: (document: Omit<Document, 'id' | 'createdAt' | 'updatedAt'>) => {
       const newDocument = addDocument(document);
       setDocuments([...documents, newDocument]);

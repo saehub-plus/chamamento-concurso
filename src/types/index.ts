@@ -51,6 +51,9 @@ export interface Document {
   issueDate?: string;
   validityPeriod?: ValidityPeriod;
   states?: string[]; // For documents that require state selection (e.g., council certifications)
+  stateLinks?: Record<string, string>; // Links for each selected state
+  vaccineDoses?: string[]; // Array of dates for vaccine doses
+  userAge?: number; // For Tríplice Viral vaccine
   createdAt: string;
   updatedAt: string;
 }
