@@ -27,9 +27,13 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
       // Validate date format (DD/MM/YYYY)
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
         const [day, month, year] = dateString.split('/').map(Number);
-        const newDate = new Date(year, month - 1, day);
         
-        if (!isNaN(newDate.getTime())) {
+        // Check if it's a valid date (month between 1-12, day valid for month)
+        const newDate = new Date(year, month - 1, day);
+        const isValidDay = day > 0 && day <= new Date(year, month, 0).getDate();
+        const isValidMonth = month > 0 && month <= 12;
+        
+        if (isValidDay && isValidMonth && !isNaN(newDate.getTime())) {
           onChange(newDate);
         }
       }
