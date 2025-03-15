@@ -67,7 +67,7 @@ export default function Documents() {
 
           {documents.length === 0 ? (
             <EmptyState
-              icon={File}
+              icon={<File className="h-10 w-10" />}
               title="Nenhum documento cadastrado"
               description="Adicione documentos para gerenciar seus itens para o concurso."
             />

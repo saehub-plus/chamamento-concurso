@@ -1,3 +1,4 @@
+
 import { Variants } from 'framer-motion';
 
 // Animation variants for page transitions
@@ -75,4 +76,68 @@ export const scaleVariants = {
       ease: "easeOut"
     }
   },
+};
+
+// Fade animation variants (used in EmptyState and CandidateCard)
+export const fadeVariants: Variants = {
+  hidden: { 
+    opacity: 0,
+    y: 10 
+  },
+  visible: { 
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut"
+    }
+  },
+  exit: {
+    opacity: 0,
+    y: -10,
+    transition: {
+      duration: 0.2,
+      ease: "easeIn"
+    }
+  }
+};
+
+// Card animation variants (used in ConvocationCard)
+export const cardVariants: Variants = {
+  hidden: { 
+    opacity: 0,
+    y: 20,
+    scale: 0.98
+  },
+  visible: { 
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.98,
+    transition: {
+      duration: 0.3,
+      ease: "easeIn"
+    }
+  }
+};
+
+// Container animation variants (used in Candidates and Convocations pages)
+export const containerVariants: Variants = {
+  hidden: { 
+    opacity: 0 
+  },
+  visible: { 
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.07,
+      delayChildren: 0.1
+    }
+  }
 };
