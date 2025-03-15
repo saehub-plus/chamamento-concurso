@@ -1,87 +1,78 @@
-
 import { Variants } from 'framer-motion';
 
-// Card animation variants
-export const cardVariants: Variants = {
-  hidden: { 
-    opacity: 0, 
-    y: 20,
-  },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      duration: 0.4,
-      ease: [0.22, 1, 0.36, 1]
-    }
-  },
-  exit: { 
-    opacity: 0,
-    y: 10,
-    transition: {
-      duration: 0.2,
-      ease: [0.65, 0, 0.35, 1]
-    }
-  }
-};
-
-// List item staggered animation
-export const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.08
-    }
-  }
-};
-
-// Page transition variants
-export const pageVariants: Variants = {
+// Animation variants for page transitions
+export const pageVariants = {
   initial: {
     opacity: 0,
-    y: 10
+    y: 20,
   },
   animate: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.4,
-      ease: [0.22, 1, 0.36, 1]
-    }
+      duration: 0.3,
+      ease: "easeOut",
+    },
   },
   exit: {
     opacity: 0,
+    y: -20,
     transition: {
-      duration: 0.3,
-      ease: [0.65, 0, 0.35, 1]
-    }
-  }
+      duration: 0.2,
+      ease: "easeIn",
+    },
+  },
 };
 
-// Fade animation variants
-export const fadeVariants: Variants = {
+// Animation variants for staggering children
+export const staggerContainer: Variants = {
   hidden: { opacity: 0 },
-  visible: { 
+  show: {
     opacity: 1,
     transition: {
-      duration: 0.4
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 };
 
-// Scale animation variants
-export const scaleVariants: Variants = {
+// Animation variants for fading in elements
+export const fadeIn = (delay = 0): Variants => ({
   hidden: { 
-    opacity: 0, 
-    scale: 0.95 
+    opacity: 0,
+    y: 10 
   },
   visible: { 
-    opacity: 1, 
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut",
+      delay,
+    },
+  },
+  show: { 
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut",
+      delay,
+    },
+  },
+});
+
+// Animation variants for scaling elements
+export const scaleVariants = {
+  hidden: { 
+    scale: 0.95,
+    opacity: 0 
+  },
+  visible: { 
     scale: 1,
+    opacity: 1,
     transition: {
       duration: 0.3,
-      ease: [0.22, 1, 0.36, 1]
+      ease: "easeOut"
     }
-  }
+  },
 };

@@ -18,6 +18,7 @@ import { CandidateForm } from '@/components/CandidateForm';
 import { BulkCandidateForm } from '@/components/BulkCandidateForm';
 import { ConvocationForm } from '@/components/ConvocationForm';
 import { PredictionCard } from '@/components/PredictionCard';
+import { DocumentStatusCard } from '@/components/DocumentStatusCard';
 import { EmptyState } from '@/components/EmptyState';
 import { getCandidates, getConvocations, getCandidateStatusCounts } from '@/utils/storage';
 import { StatusCount, Candidate, Convocation } from '@/types';
@@ -140,6 +141,8 @@ export default function Index() {
               </div>
               
               <div className="space-y-6">
+                <DocumentStatusCard />
+                
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Candidatos</CardTitle>

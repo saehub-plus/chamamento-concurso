@@ -1,3 +1,4 @@
+
 export type CandidateStatus = 
   | 'classified' // Classificado
   | 'called'     // Convocado
@@ -47,6 +48,26 @@ export interface Document {
   isValid: boolean;
   driveLink?: string;
   expirationDate?: string;
+  issueDate?: string;
+  validityPeriod?: ValidityPeriod;
+  states?: string[]; // For documents that require state selection (e.g., council certifications)
   createdAt: string;
   updatedAt: string;
+}
+
+export type ValidityPeriod = 
+  | 'none'         // No expiration
+  | '30days'       // 30 days validity
+  | '90days'       // 90 days validity
+  | '3months'      // 3 months validity
+  | '1year'        // 1 year validity
+  | '5years'       // 5 years validity
+  | '10years';     // 10 years validity
+
+export interface DocumentsStatus {
+  total: number;
+  completed: number;
+  expired: number;
+  missing: number;
+  percentage: number;
 }
