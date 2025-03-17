@@ -34,6 +34,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
     return (
       <Input
         ref={ref}
+        type="text"
         value={formattedDate}
         onChange={handleDateChange}
         placeholder="DD/MM/YYYY"
