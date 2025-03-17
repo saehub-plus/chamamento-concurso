@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Header } from '@/components/Header';
+import { HeaderWrapper } from '@/components/HeaderWrapper';
 import { DocumentCard } from '@/components/DocumentCard';
 import { useDocuments } from '@/utils/storage';
 import { File, FileCheck, FileWarning, AlertTriangle, Syringe } from 'lucide-react';
@@ -30,7 +30,7 @@ export default function Documents() {
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <HeaderWrapper />
       
       <main className="flex-1 layout-container py-6">
         <motion.div

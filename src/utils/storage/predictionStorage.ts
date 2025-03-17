@@ -1,9 +1,10 @@
 
 import { getConvocations } from './convocationStorage';
-import { getCandidates, getVacancies } from './candidateStorage';
+import { getCandidates } from './candidateStorage';
 import { addBusinessDays, differenceInBusinessDays, isWeekend, subBusinessDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getDocumentsWithProblems, getDocumentsExpiringBeforeDate } from './documentStorage';
+import { Document } from '@/types';
 
 // Check if a date is a business day (not weekend)
 const isBusinessDay = (date: Date): boolean => {

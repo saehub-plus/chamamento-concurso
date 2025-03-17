@@ -55,7 +55,12 @@ export function BulkStatusForm({ filterStatus = 'classified', onSuccess, onCance
     let filteredCandidates = allCandidates;
     
     if (filterStatus) {
-      filteredCandidates = allCandidates.filter(c => c.status === filterStatus);
+      // Mostrar candidatos com status Classificado ou Convocado
+      filteredCandidates = allCandidates.filter(c => 
+        c.status === filterStatus || 
+        (filterStatus === 'classified' && c.status === 'called') ||
+        (filterStatus === 'called' && c.status === 'classified')
+      );
     }
     
     // Sort by position
@@ -155,7 +160,7 @@ export function BulkStatusForm({ filterStatus = 'classified', onSuccess, onCance
         
         <div className="space-y-2">
           <div className="flex justify-between mb-2">
-            <FormLabel>Selecione os candidatos classificados</FormLabel>
+            <FormLabel>Selecione os candidatos</FormLabel>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={handleSelectAll}>
                 Selecionar todos
@@ -174,7 +179,7 @@ export function BulkStatusForm({ filterStatus = 'classified', onSuccess, onCance
                 <div className="space-y-2">
                   {candidates.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic">
-                      Nenhum candidato classificado encontrado
+                      Nenhum candidato encontrado
                     </p>
                   ) : (
                     candidates.map((candidate) => (

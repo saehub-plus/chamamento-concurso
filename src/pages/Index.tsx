@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Plus, UserPlus, CalendarPlus, ListPlus } from 'lucide-react';
-import { Header } from '@/components/Header';
+import { HeaderWrapper } from '@/components/HeaderWrapper';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,9 +17,10 @@ import { StatisticsCard } from '@/components/StatisticsCard';
 import { CandidateForm } from '@/components/CandidateForm';
 import { BulkCandidateForm } from '@/components/BulkCandidateForm';
 import { ConvocationForm } from '@/components/ConvocationForm';
-import { PredictionCard } from '@/components/PredictionCard';
+import { PredictionCardEnhanced } from '@/components/PredictionCardEnhanced';
 import { DocumentStatusCard } from '@/components/DocumentStatusCard';
 import { EmptyState } from '@/components/EmptyState';
+import { CallsOverTimeChart } from '@/components/charts/CallsOverTimeChart';
 import { getCandidates, getConvocations, getCandidateStatusCounts, getDocumentsStatus } from '@/utils/storage';
 import { StatusCount, Candidate, Convocation, DocumentsStatus } from '@/types';
 import { toast } from 'sonner';
@@ -44,6 +46,7 @@ export default function Index() {
     completed: 0,
     expired: 0,
     missing: 0,
+    vaccineProblem: 0,
     percentage: 0
   });
 
@@ -70,7 +73,7 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <HeaderWrapper />
       
       <motion.main
         variants={pageVariants}
@@ -140,8 +143,11 @@ export default function Index() {
           />
         ) : (
           <div className="grid grid-cols-1 gap-6">
-            {/* Prediction Card */}
-            <PredictionCard />
+            {/* Prediction Card Enhanced */}
+            <PredictionCardEnhanced />
+            
+            {/* Calls Over Time Chart */}
+            <CallsOverTimeChart />
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
