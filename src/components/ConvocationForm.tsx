@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -15,7 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Convocation, Candidate } from '@/types';
-import { addConvocation, updateConvocation, getCandidates, updateCandidateStatus } from '@/utils/storage/candidateStorage';
+import { getCandidates, updateCandidateStatus } from '@/utils/storage/candidateStorage';
+import { addConvocation, updateConvocation } from '@/utils/storage/convocationStorage';
 import { CandidateSelector } from './convocation/CandidateSelector';
 import { DateInput } from './convocation/DateInput';
 
