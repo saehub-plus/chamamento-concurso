@@ -1,3 +1,4 @@
+
 export type CandidateStatus = 
   | 'classified' // Classificado
   | 'called'     // Convocado
@@ -91,4 +92,10 @@ export interface PredictionScenarios {
     date: Date | null;
     businessDays: number;
   };
+}
+
+// Add ScenarioInfo interface for PredictionScenarios component
+export interface ScenarioInfo {
+  date: Date | null;
+  businessDays?: number;
 }

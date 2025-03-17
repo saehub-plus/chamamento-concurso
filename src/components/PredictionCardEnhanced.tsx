@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { PredictionCard } from '@/components/PredictionCard';
 import { DocumentWarningsAlert } from '@/components/prediction/DocumentWarningsAlert';
 import { PredictionScenarios } from '@/components/prediction/PredictionScenarios';
 import { AvailablePositions } from '@/components/prediction/AvailablePositions';
 import { getCurrentUserId, getCandidateById, predictCandidateCall } from '@/utils/storage';
-import { Confetti, PartyPopper, UmbrellaOff, ArrowRightCircle, X, AlertTriangle, CheckCircle, User, FileText, Stethoscope, FileBadge2, CalendarDays, CheckCircle2 } from 'lucide-react';
+import { PartyPopper, UmbrellaOff, ArrowRightCircle, X, AlertTriangle, CheckCircle, User, FileText, Stethoscope, FileBadge2, CalendarDays, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -132,12 +131,12 @@ function ConvocationSteps({ status }: { status: 'called' | 'appointed' }) {
               </span>
             ) : (
               <span className="flex items-center">
-                <Confetti className="h-6 w-6 mr-2 text-green-500" />
+                <PartyPopper className="h-6 w-6 mr-2 text-green-500" />
                 Você foi nomeado!
               </span>
             )}
           </h3>
-          <Badge variant={status === 'called' ? "default" : "success"} className="text-sm">
+          <Badge variant={status === 'called' ? "default" : "secondary"} className="text-sm">
             {status === 'called' ? 'Convocado' : 'Nomeado'}
           </Badge>
         </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -16,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Convocation, Candidate } from '@/types';
-import { addConvocation, updateConvocation, getCandidates, updateCandidateStatus } from '@/utils/storage';
+import { addConvocation, updateConvocation, getCandidates, updateCandidateStatus } from '@/utils/storage/candidateStorage';
 import { CandidateSelector } from './convocation/CandidateSelector';
 import { DateInput } from './convocation/DateInput';
 
@@ -39,7 +38,6 @@ export function ConvocationForm({ initialData, onSuccess, onCancel }: Convocatio
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [hasCandidates, setHasCandidates] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -78,7 +76,7 @@ export function ConvocationForm({ initialData, onSuccess, onCancel }: Convocatio
       }
       
       // Ensure all required fields are present
-      const convocationData: Omit<Convocation, 'id' | 'createdAt'> = {
+      const convocationData = {
         date: values.date.toISOString(),
         hasCalled: values.hasCalled,
         calledCandidates: values.calledCandidates || [],
@@ -126,8 +124,6 @@ export function ConvocationForm({ initialData, onSuccess, onCancel }: Convocatio
                 <DateInput
                   date={field.value}
                   onChange={field.onChange}
-                  calendarOpen={calendarOpen}
-                  setCalendarOpen={setCalendarOpen}
                 />
               </FormControl>
               <FormMessage />

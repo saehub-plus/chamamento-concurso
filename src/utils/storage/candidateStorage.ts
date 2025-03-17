@@ -1,8 +1,10 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { Candidate, CandidateStatus } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
 const STORAGE_KEY = 'candidates';
+const CURRENT_USER_KEY = 'currentUser';
 
 // Function to add a new candidate
 export const addCandidate = (candidate: Omit<Candidate, 'id'>): Candidate => {
@@ -10,15 +12,47 @@ export const addCandidate = (candidate: Omit<Candidate, 'id'>): Candidate => {
   const newCandidate: Candidate = {
     id: uuidv4(),
     ...candidate,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...candidates, newCandidate]));
   return newCandidate;
 };
 
+// Function to add multiple candidates at once
+export const addMultipleCandidates = (names: string[], startPosition: number = 1): Candidate[] => {
+  const candidates = getCandidates();
+  
+  const newCandidates = names.map((name, index) => {
+    const position = startPosition + index;
+    
+    return {
+      id: uuidv4(),
+      name: name.trim(),
+      position: position,
+      status: 'classified' as CandidateStatus,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  });
+  
+  const updatedCandidates = [...candidates, ...newCandidates];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCandidates));
+  
+  return newCandidates;
+};
+
 // Function to get all candidates
 export const getCandidates = (): Candidate[] => {
   const candidatesJson = localStorage.getItem(STORAGE_KEY);
-  return candidatesJson ? JSON.parse(candidatesJson) : [];
+  const candidates = candidatesJson ? JSON.parse(candidatesJson) : [];
+  
+  // Add isCurrentUser property
+  const currentUserId = getCurrentUserId();
+  return candidates.map(candidate => ({
+    ...candidate,
+    isCurrentUser: candidate.id === currentUserId
+  }));
 };
 
 // Function to update a candidate
@@ -30,10 +64,37 @@ export const updateCandidate = (id: string, candidate: Partial<Candidate>): Cand
   const updatedCandidate = {
     ...candidates[candidateIndex],
     ...candidate,
+    updatedAt: new Date().toISOString()
   };
   candidates[candidateIndex] = updatedCandidate;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(candidates));
   return updatedCandidate;
+};
+
+// Function specifically for updating candidate status
+export const updateCandidateStatus = (id: string, status: CandidateStatus): Candidate | null => {
+  return updateCandidate(id, { status });
+};
+
+// Bulk update candidate status
+export const bulkUpdateCandidateStatus = (ids: string[], status: CandidateStatus): number => {
+  const candidates = getCandidates();
+  let updatedCount = 0;
+  
+  const updatedCandidates = candidates.map(candidate => {
+    if (ids.includes(candidate.id)) {
+      updatedCount++;
+      return {
+        ...candidate,
+        status,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return candidate;
+  });
+  
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCandidates));
+  return updatedCount;
 };
 
 // Function to remove a candidate
@@ -46,10 +107,22 @@ export const removeCandidate = (id: string): boolean => {
   return true;
 };
 
+// Alias for removeCandidate for better naming
+export const deleteCandidate = removeCandidate;
+
 // Function to get candidate by ID
 export const getCandidateById = (id: string): Candidate | undefined => {
   const candidates = getCandidates();
-  return candidates.find(c => c.id === id);
+  const candidate = candidates.find(c => c.id === id);
+  
+  if (candidate) {
+    return {
+      ...candidate,
+      isCurrentUser: candidate.id === getCurrentUserId()
+    };
+  }
+  
+  return undefined;
 };
 
 // Function to get candidate status counts
@@ -83,6 +156,21 @@ export const getAvailablePositions = (): number => {
   return (eliminated + withdrawn) - called;
 };
 
+// Mark candidate as current user
+export const markAsCurrentUser = (id: string): void => {
+  localStorage.setItem(CURRENT_USER_KEY, id);
+};
+
+// Clear current user
+export const clearCurrentUser = (): void => {
+  localStorage.removeItem(CURRENT_USER_KEY);
+};
+
+// Function to get current user ID
+export const getCurrentUserId = (): string | null => {
+  return localStorage.getItem(CURRENT_USER_KEY);
+};
+
 // Hook to use candidates
 export const useCandidates = () => {
   const [candidates, setCandidates] = useLocalStorage<Candidate[]>(STORAGE_KEY, []);
@@ -109,12 +197,4 @@ export const useCandidates = () => {
       return isRemoved;
     }
   };
-};
-
-// Function to get current user ID (for testing purposes)
-export const getCurrentUserId = (): string | null => {
-  // This is a placeholder, replace with actual authentication logic
-  // For now, return the ID of the first candidate in the list
-  const candidates = getCandidates();
-  return candidates.length > 0 ? candidates[0].id : null;
 };

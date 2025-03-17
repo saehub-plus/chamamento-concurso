@@ -25,8 +25,8 @@ import { Candidate } from '@/types';
 import { CandidateForm } from './CandidateForm';
 import { 
   updateCandidateStatus, 
-  deleteCandidate
-} from '@/utils/storage';
+  removeCandidate
+} from '@/utils/storage/candidateStorage';
 import { toast } from 'sonner';
 import { fadeVariants } from '@/utils/animations';
 import { CandidateActions } from './candidate/CandidateActions';
@@ -47,7 +47,7 @@ export function CandidateCard({ candidate, onUpdate }: CandidateCardProps) {
   };
   
   const handleDelete = () => {
-    deleteCandidate(candidate.id);
+    removeCandidate(candidate.id);
     setShowDeleteDialog(false);
     onUpdate();
     toast.success('Candidato removido com sucesso');

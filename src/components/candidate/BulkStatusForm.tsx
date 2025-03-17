@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getCandidates, bulkUpdateCandidateStatus } from '@/utils/storage';
+import { getCandidates, bulkUpdateCandidateStatus } from '@/utils/storage/candidateStorage';
 import { toast } from 'sonner';
 
 const formSchema = z.object({

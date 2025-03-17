@@ -12,7 +12,7 @@ import {
 import { StatusBadge } from '../StatusBadge';
 import { Candidate } from '@/types';
 import { toast } from 'sonner';
-import { markAsCurrentUser, clearCurrentUser } from '@/utils/storage';
+import { markAsCurrentUser, clearCurrentUser } from '@/utils/storage/candidateStorage';
 
 interface CandidateActionsProps {
   candidate: Candidate;

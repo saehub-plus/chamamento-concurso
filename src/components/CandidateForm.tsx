@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -21,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Candidate } from '@/types';
-import { addCandidate, updateCandidate } from '@/utils/storage';
+import { addCandidate, updateCandidate } from '@/utils/storage/candidateStorage';
 
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Nome deve ter pelo menos 3 caracteres' }),
@@ -60,11 +61,13 @@ export function CandidateForm({ initialData, onSuccess, onCancel }: CandidateFor
       if (initialData) {
         updateCandidate(initialData.id, values);
       } else {
-        // Ensure all required fields are present before adding
-        const candidateData: Omit<Candidate, 'id' | 'createdAt' | 'updatedAt'> = {
+        // Create a new candidate with required fields
+        const candidateData: Omit<Candidate, 'id'> = {
           name: values.name,
           position: values.position,
-          status: values.status
+          status: values.status,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         addCandidate(candidateData);
       }

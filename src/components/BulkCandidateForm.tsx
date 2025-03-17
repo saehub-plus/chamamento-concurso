@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -14,7 +13,7 @@ import {
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { addMultipleCandidates } from '@/utils/storage';
+import { addMultipleCandidates } from '@/utils/storage/candidateStorage';
 import { Input } from '@/components/ui/input';
 
 const formSchema = z.object({
@@ -49,17 +48,10 @@ export function BulkCandidateForm({ onSuccess, onCancel }: BulkCandidateFormProp
       .map(name => name.trim())
       .filter(name => name.length > 0);
     
-    // Manually assign positions starting from the specified position
-    const candidates = namesArray.map((name, index) => ({
-      name,
-      position: values.startPosition + index,
-      status: 'classified' as const
-    }));
-    
     // Add the candidates
     setTimeout(() => {
       try {
-        addMultipleCandidates(namesArray);
+        addMultipleCandidates(namesArray, values.startPosition);
         onSuccess(namesArray.length);
       } catch (error) {
         console.error('Error adding candidates:', error);

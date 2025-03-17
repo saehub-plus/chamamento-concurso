@@ -4,14 +4,22 @@ import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Clock, Hourglass, TimerOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ScenarioInfo } from '@/types';
 import { Info } from 'lucide-react';
 
 interface PredictionScenariosProps {
   scenarios: {
-    pessimistic: ScenarioInfo;
-    realistic: ScenarioInfo;
-    optimistic: ScenarioInfo;
+    pessimistic: {
+      date: Date | null;
+      businessDays?: number;
+    };
+    realistic: {
+      date: Date | null;
+      businessDays?: number;
+    };
+    optimistic: {
+      date: Date | null;
+      businessDays?: number;
+    };
   };
 }
 
