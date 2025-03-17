@@ -1,10 +1,21 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentsStatus } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { addDays, addMonths, addYears, isAfter, parseISO, differenceInDays } from 'date-fns';
 
 const STORAGE_KEY = 'documents';
+
+// Additional function to check if vaccine needs booster
+export const needsVaccineBooster = (document: Document): boolean => {
+  if (document.name !== "Vacina DT") return false;
+  if (!document.vaccineDoses || document.vaccineDoses.length < 3) return false;
+  
+  const lastDose = parseISO(document.vaccineDoses[document.vaccineDoses.length - 1]);
+  const tenYearsAgo = new Date();
+  tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+  
+  return lastDose < tenYearsAgo;
+};
 
 // Function to calculate validity date based on issue date and validity period
 export const calculateExpirationDate = (issueDate: string, validityPeriod: string): string | undefined => {
@@ -167,8 +178,8 @@ export const isDocumentComplete = (document: Document): boolean => {
   // If expired, it's not complete
   if (document.expirationDate && isDocumentExpired(document)) return false;
   
-  // Check for Google Drive link requirement (for non-vaccine, non-state documents)
-  if (!isVaccine && !isStateDocument && !document.driveLink) return false;
+  // Check for Google Drive link requirement (for all documents including vaccines)
+  if (!document.driveLink) return false;
   
   // For state documents, check if all selected states have links and issue dates
   if (isStateDocument) {
@@ -232,6 +243,7 @@ export const getDocumentsStatus = (): DocumentsStatus => {
 // Check if vaccine document is complete
 export const isVaccineComplete = (document: Document): boolean => {
   if (!document.vaccineDoses || document.vaccineDoses.length === 0) return false;
+  if (!document.driveLink) return false; // Vaccines also need Google Drive link
   
   if (document.name === "Vacina Hepatite B") {
     if (document.vaccineDoses.length !== 3) return false;
@@ -249,8 +261,9 @@ export const isVaccineComplete = (document: Document): boolean => {
     return secondDoseValid && thirdDoseValid;
   } 
   else if (document.name === "Vacina DT") {
-    if (document.vaccineDoses.length !== 3) return false;
+    if (document.vaccineDoses.length < 3) return false;
     
+    // Check for the basic 3-dose schedule
     const firstDose = parseISO(document.vaccineDoses[0]);
     const secondDose = parseISO(document.vaccineDoses[1]);
     const thirdDose = parseISO(document.vaccineDoses[2]);
@@ -259,7 +272,14 @@ export const isVaccineComplete = (document: Document): boolean => {
     const secondDoseValid = secondDose.getTime() >= new Date(firstDose.getFullYear(), firstDose.getMonth(), firstDose.getDate() + 60).getTime();
     const thirdDoseValid = thirdDose.getTime() >= new Date(secondDose.getFullYear(), secondDose.getMonth(), secondDose.getDate() + 60).getTime();
     
-    return secondDoseValid && thirdDoseValid;
+    // Check if booster is needed (10 years after last dose)
+    const lastDose = parseISO(document.vaccineDoses[document.vaccineDoses.length - 1]);
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+    
+    const needsBooster = lastDose < tenYearsAgo;
+    
+    return secondDoseValid && thirdDoseValid && !needsBooster;
   } 
   else if (document.name === "Vacina Tríplice Viral") {
     if (!document.userAge) return false;

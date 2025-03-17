@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -66,7 +65,7 @@ const parseDateFromInput = (dateString: string): string => {
 
 export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProps) {
   const [userAge, setUserAge] = useState<number | undefined>(document.userAge);
-
+  
   const handleIssueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const dateValue = e.target.value;
     if (dateValue) {
@@ -213,6 +212,18 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
                          document.name === "Comprovante de Quitação da Anuidade do Conselho";
   const requiresNotarizedCopy = ["Declaração de Não Penalidades", "Declaração de Não Acumulação de Cargos", "Declaração de Bens"].includes(document.name);
 
+  // New function to check if document needs booster
+  const needsBooster = () => {
+    if (document.name === "Vacina DT" && document.vaccineDoses && document.vaccineDoses.length >= 3) {
+      const lastDose = parseISO(document.vaccineDoses[document.vaccineDoses.length - 1]);
+      const tenYearsAgo = new Date();
+      tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+      
+      return lastDose < tenYearsAgo;
+    }
+    return false;
+  };
+
   // New logic to check if the document is complete
   const isDocumentComplete = () => {
     if (!document.hasDocument) return false;
@@ -274,7 +285,7 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
 
   return (
     <Card className={cn(
-      "transition-all duration-300 hover:shadow-md",
+      "transition-all duration-300 hover:shadow-md animate-fade-in",
       expired ? "border-red-300 bg-red-50" : 
       hasVaccineProblem() ? "border-orange-300 bg-orange-50" :
       isDocumentComplete() ? "border-green-300 bg-green-50" : 
@@ -306,6 +317,7 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Checkbox section for document status */}
         <div className="flex flex-col space-y-2">
           <div className="flex items-center space-x-2">
             <Checkbox 
@@ -376,16 +388,14 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
                 Datas das doses 
                 {requiredDoses > 0 && <span className="text-sm text-muted-foreground ml-1">({(document.vaccineDoses || []).length}/{requiredDoses})</span>}
               </Label>
-              {(document.vaccineDoses || []).length < requiredDoses && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 px-2" 
-                  onClick={addVaccineDose}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Adicionar Dose
-                </Button>
-              )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 px-2" 
+                onClick={addVaccineDose}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Adicionar Dose
+              </Button>
             </div>
             
             {document.name === "Vacina Hepatite B" && (
@@ -405,9 +415,28 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
                 <div key={index} className="flex items-center gap-2">
                   <div className="flex-1">
                     <Input
-                      type="date"
-                      value={formatDateForInput(dose)}
-                      onChange={(e) => handleVaccineDateChange(e, index)}
+                      type="text"
+                      value={format(parseISO(dose), 'dd/MM/yyyy')}
+                      onChange={(e) => {
+                        const dateValue = e.target.value;
+                        
+                        // Parse the date in DD/MM/YYYY format
+                        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateValue)) {
+                          const [day, month, year] = dateValue.split('/').map(Number);
+                          
+                          // Check if it's a valid date
+                          const newDate = new Date(year, month - 1, day);
+                          const isValidDay = day > 0 && day <= new Date(year, month, 0).getDate();
+                          const isValidMonth = month > 0 && month <= 12;
+                          
+                          if (isValidDay && isValidMonth && !isNaN(newDate.getTime())) {
+                            handleVaccineDateChange({
+                              target: { value: newDate.toISOString().split('T')[0] }
+                            } as React.ChangeEvent<HTMLInputElement>, index);
+                          }
+                        }
+                      }}
+                      placeholder="DD/MM/YYYY"
                       className="w-full"
                     />
                   </div>
@@ -423,7 +452,13 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
               ))}
             </div>
             
-            {isVaccine && (document.vaccineDoses || []).length === requiredDoses && isVaccineScheduleValid() && (
+            {needsBooster() && (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
+                Necessita dose de reforço (último reforço há mais de 10 anos)
+              </Badge>
+            )}
+            
+            {isVaccine && (document.vaccineDoses || []).length === requiredDoses && isVaccineScheduleValid() && !needsBooster() && (
               <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
                 Esquema vacinal completo
               </Badge>
@@ -450,9 +485,28 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
             </Label>
             <Input
               id={`issue-date-${document.id}`}
-              type="date"
-              value={formatDateForInput(document.issueDate)}
-              onChange={handleIssueDateChange}
+              type="text"
+              value={document.issueDate ? format(parseISO(document.issueDate), 'dd/MM/yyyy') : ''}
+              onChange={(e) => {
+                const dateValue = e.target.value;
+                
+                // Parse the date in DD/MM/YYYY format
+                if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateValue)) {
+                  const [day, month, year] = dateValue.split('/').map(Number);
+                  
+                  // Check if it's a valid date
+                  const newDate = new Date(year, month - 1, day);
+                  const isValidDay = day > 0 && day <= new Date(year, month, 0).getDate();
+                  const isValidMonth = month > 0 && month <= 12;
+                  
+                  if (isValidDay && isValidMonth && !isNaN(newDate.getTime())) {
+                    onUpdate(document.id, { issueDate: newDate.toISOString() });
+                  }
+                } else if (dateValue === '') {
+                  onUpdate(document.id, { issueDate: undefined });
+                }
+              }}
+              placeholder="DD/MM/YYYY"
               className="w-full"
             />
           </div>
@@ -529,9 +583,28 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
                   <Label htmlFor={`issue-date-${document.id}-${state}`}>Data de emissão</Label>
                   <Input
                     id={`issue-date-${document.id}-${state}`}
-                    type="date"
-                    value={formatDateForInput(document.stateIssueDates?.[state])}
-                    onChange={(e) => handleStateIssueDateChange(e, state)}
+                    type="text"
+                    value={document.stateIssueDates?.[state] ? format(parseISO(document.stateIssueDates[state]), 'dd/MM/yyyy') : ''}
+                    onChange={(e) => {
+                      const dateValue = e.target.value;
+                      
+                      // Parse the date in DD/MM/YYYY format
+                      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateValue)) {
+                        const [day, month, year] = dateValue.split('/').map(Number);
+                        
+                        // Check if it's a valid date
+                        const newDate = new Date(year, month - 1, day);
+                        const isValidDay = day > 0 && day <= new Date(year, month, 0).getDate();
+                        const isValidMonth = month > 0 && month <= 12;
+                        
+                        if (isValidDay && isValidMonth && !isNaN(newDate.getTime())) {
+                          handleStateIssueDateChange({
+                            target: { value: newDate.toISOString().split('T')[0] }
+                          } as React.ChangeEvent<HTMLInputElement>, state);
+                        }
+                      }
+                    }}
+                    placeholder="DD/MM/YYYY"
                     className="w-full"
                   />
                 </div>
@@ -539,31 +612,29 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
             ))}
           </div>
         ) : (
-          // For regular documents
-          !isVaccine && (
-            <div className="space-y-2">
-              <Label htmlFor={`link-${document.id}`}>Link no Google Drive</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id={`link-${document.id}`}
-                  type="url"
-                  placeholder="https://drive.google.com/..."
-                  value={document.driveLink || ""}
-                  onChange={(e) => handleLinkChange(e)}
-                  className="flex-1"
-                />
-                {document.driveLink && (
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => window.open(document.driveLink, '_blank')}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+          // For regular documents and vaccines
+          <div className="space-y-2">
+            <Label htmlFor={`link-${document.id}`}>Link no Google Drive</Label>
+            <div className="flex items-center space-x-2">
+              <Input
+                id={`link-${document.id}`}
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={document.driveLink || ""}
+                onChange={(e) => handleLinkChange(e)}
+                className="flex-1"
+              />
+              {document.driveLink && (
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => window.open(document.driveLink, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-          )
+          </div>
         )}
       </CardContent>
       <CardFooter className="pt-0 text-xs text-muted-foreground">
