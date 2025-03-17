@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentsStatus } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { addDays, addMonths, addYears, isAfter, parseISO } from 'date-fns';
+import { addDays, addMonths, addYears, isAfter, parseISO, differenceInDays } from 'date-fns';
 
 const STORAGE_KEY = 'documents';
 
@@ -45,6 +45,19 @@ export const isDocumentExpired = (document: Document): boolean => {
   
   const expiryDate = parseISO(document.expirationDate);
   return !isAfter(expiryDate, new Date());
+};
+
+// Function to check if a document will expire within X days
+export const willExpireSoon = (document: Document, days: number): boolean => {
+  if (!document.expirationDate) return false;
+  
+  const expiryDate = parseISO(document.expirationDate);
+  const today = new Date();
+  
+  if (!isAfter(expiryDate, today)) return false; // Already expired
+  
+  const daysToExpiry = differenceInDays(expiryDate, today);
+  return daysToExpiry <= days;
 };
 
 // Function to add document
@@ -120,13 +133,48 @@ export const removeDocument = (id: string): boolean => {
   return true;
 };
 
+// Check if document is complete according to new rules
+export const isDocumentComplete = (document: Document): boolean => {
+  // Must have the document
+  if (!document.hasDocument) return false;
+  
+  // Check for Google Drive link requirement
+  const isStateDocument = ["Certidão Negativa Ético-Disciplinar do Conselho", "Comprovante de Quitação da Anuidade do Conselho"].includes(document.name);
+  if (!document.driveLink && !isStateDocument) return false;
+  
+  // If expired, it's not complete
+  if (document.expirationDate && isDocumentExpired(document)) return false;
+  
+  // For state documents, check if all selected states have links
+  if (isStateDocument) {
+    if (!document.states || document.states.length === 0) return false;
+    return document.states.every(state => 
+      document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
+    );
+  }
+  
+  // For vaccines, check if schedule is valid
+  const isVaccine = ["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(document.name);
+  if (isVaccine) {
+    return isVaccineComplete(document);
+  }
+  
+  // For documents requiring notarized copy
+  const requiresNotarizedCopy = ["Declaração de Não Penalidades", "Declaração de Não Acumulação de Cargos", "Declaração de Bens"].includes(document.name);
+  if (requiresNotarizedCopy && !document.hasNotarizedCopy) {
+    return false;
+  }
+  
+  return true;
+};
+
 // Function to get document status statistics
 export const getDocumentsStatus = (): DocumentsStatus => {
   const documents = getDocuments();
   const total = documents.length;
   
-  // Count completed documents (has document)
-  const completed = documents.filter(doc => doc.hasDocument).length;
+  // Count completed documents using new completion criteria
+  const completed = documents.filter(doc => isDocumentComplete(doc)).length;
   
   // Count expired documents
   const expired = documents.filter(doc => 
@@ -206,6 +254,57 @@ export const isStateDocumentComplete = (document: Document): boolean => {
   return document.states.every(state => 
     document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
   );
+};
+
+// Check if document will expire before a target date
+export const willExpireBeforeDate = (document: Document, targetDate: Date): boolean => {
+  if (!document.expirationDate) return false;
+  
+  const expiryDate = parseISO(document.expirationDate);
+  return expiryDate < targetDate;
+};
+
+// Get documents that will expire before a specified date
+export const getDocumentsExpiringBeforeDate = (targetDate: Date, includeDays: number = 15): Document[] => {
+  const extendedTargetDate = addDays(targetDate, includeDays);
+  const documents = getDocuments();
+  
+  return documents.filter(doc => 
+    doc.hasDocument && 
+    doc.expirationDate && 
+    willExpireBeforeDate(doc, extendedTargetDate) && 
+    !isDocumentExpired(doc) // Only include non-expired documents
+  );
+};
+
+// Get all documents with problems (missing, expired, incomplete vaccines)
+export const getDocumentsWithProblems = (): Document[] => {
+  const documents = getDocuments();
+  
+  return documents.filter(doc => {
+    // Check for missing documents
+    if (!doc.hasDocument) return true;
+    
+    // Check for expired documents
+    if (doc.expirationDate && isDocumentExpired(doc)) return true;
+    
+    // Check for incomplete vaccine schedules
+    const isVaccine = ["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(doc.name);
+    if (isVaccine && !isVaccineComplete(doc)) return true;
+    
+    // Check for missing Google Drive links
+    if (!isVaccine && !doc.driveLink) return true;
+    
+    // Check for state documents with missing links
+    const isStateDocument = ["Certidão Negativa Ético-Disciplinar do Conselho", "Comprovante de Quitação da Anuidade do Conselho"].includes(doc.name);
+    if (isStateDocument && !isStateDocumentComplete(doc)) return true;
+    
+    // Check for documents requiring notarized copy
+    const requiresNotarizedCopy = ["Declaração de Não Penalidades", "Declaração de Não Acumulação de Cargos", "Declaração de Bens"].includes(doc.name);
+    if (requiresNotarizedCopy && !doc.hasNotarizedCopy) return true;
+    
+    return false;
+  });
 };
 
 // Hook to use documents
@@ -407,6 +506,7 @@ export const useDocuments = () => {
         name: "Declaração de Não Penalidades",
         hasDocument: false,
         hasPhysicalCopy: false,
+        hasNotarizedCopy: false,
         isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
@@ -417,6 +517,7 @@ export const useDocuments = () => {
         name: "Declaração de Não Acumulação de Cargos",
         hasDocument: false,
         hasPhysicalCopy: false,
+        hasNotarizedCopy: false,
         isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
@@ -427,6 +528,7 @@ export const useDocuments = () => {
         name: "Declaração de Bens",
         hasDocument: false,
         hasPhysicalCopy: false,
+        hasNotarizedCopy: false,
         isValid: true,
         validityPeriod: '30days',
         createdAt: new Date().toISOString(),
@@ -447,24 +549,10 @@ export const useDocuments = () => {
     setDocuments(defaultDocuments);
   }
 
-  // Calculate document status including special validation for vaccines and state-based documents
+  // Calculate document status using new completion criteria
   const documentStatus = {
     total: documents.length,
-    completed: documents.filter(doc => {
-      if (doc.hasDocument) {
-        // For vaccine documents
-        if (["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(doc.name)) {
-          return isVaccineComplete(doc);
-        } 
-        // For state-based documents
-        else if (["Certidão Negativa Ético-Disciplinar do Conselho", "Comprovante de Quitação da Anuidade do Conselho"].includes(doc.name)) {
-          return isStateDocumentComplete(doc);
-        }
-        // For regular documents
-        return true;
-      }
-      return false;
-    }).length,
+    completed: documents.filter(doc => isDocumentComplete(doc)).length,
     expired: documents.filter(doc => 
       doc.hasDocument && 
       doc.expirationDate && 
@@ -472,7 +560,7 @@ export const useDocuments = () => {
     ).length,
     missing: documents.filter(doc => !doc.hasDocument).length,
     percentage: documents.length > 0 
-      ? Math.round((documents.filter(doc => doc.hasDocument).length / documents.length) * 100) 
+      ? Math.round((documents.filter(doc => isDocumentComplete(doc)).length / documents.length) * 100) 
       : 0
   };
 

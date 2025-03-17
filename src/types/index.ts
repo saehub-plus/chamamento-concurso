@@ -54,6 +54,7 @@ export interface Document {
   stateLinks?: Record<string, string>; // Links for each selected state
   vaccineDoses?: string[]; // Array of dates for vaccine doses
   userAge?: number; // For Tríplice Viral vaccine
+  hasNotarizedCopy?: boolean; // For documents that require notarized signatures
   createdAt: string;
   updatedAt: string;
 }
@@ -73,4 +74,19 @@ export interface DocumentsStatus {
   expired: number;
   missing: number;
   percentage: number;
+}
+
+export interface PredictionScenarios {
+  pessimistic: {
+    date: Date | null;
+    businessDays: number;
+  };
+  realistic: {
+    date: Date | null;
+    businessDays: number;
+  };
+  optimistic: {
+    date: Date | null;
+    businessDays: number;
+  };
 }

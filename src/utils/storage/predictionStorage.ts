@@ -1,8 +1,9 @@
 
 import { getConvocations } from './convocationStorage';
-import { getCandidates } from './candidateStorage';
-import { addBusinessDays, differenceInBusinessDays, isWeekend } from 'date-fns';
+import { getCandidates, getVacancies } from './candidateStorage';
+import { addBusinessDays, differenceInBusinessDays, isWeekend, subBusinessDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getDocumentsWithProblems, getDocumentsExpiringBeforeDate } from './documentStorage';
 
 // Check if a date is a business day (not weekend)
 const isBusinessDay = (date: Date): boolean => {
@@ -158,6 +159,20 @@ export const predictCandidateCall = (candidatePosition: number): {
   };
   remainingCalls: number;
   confidence: 'high' | 'medium' | 'low';
+  scenarios: {
+    pessimistic: {
+      date: Date | null;
+      businessDays: number;
+    };
+    realistic: {
+      date: Date | null;
+      businessDays: number;
+    };
+    optimistic: {
+      date: Date | null;
+      businessDays: number;
+    };
+  }
 } => {
   const convocations = getConvocations();
   const candidates = getCandidates();
@@ -174,7 +189,12 @@ export const predictCandidateCall = (candidatePosition: number): {
         dynamic: 0
       },
       remainingCalls: 0,
-      confidence: 'low'
+      confidence: 'low',
+      scenarios: {
+        pessimistic: { date: null, businessDays: 0 },
+        realistic: { date: null, businessDays: 0 },
+        optimistic: { date: null, businessDays: 0 }
+      }
     };
   }
   
@@ -192,7 +212,12 @@ export const predictCandidateCall = (candidatePosition: number): {
         dynamic: 0
       },
       remainingCalls: 0,
-      confidence: 'low'
+      confidence: 'low',
+      scenarios: {
+        pessimistic: { date: null, businessDays: 0 },
+        realistic: { date: null, businessDays: 0 },
+        optimistic: { date: null, businessDays: 0 }
+      }
     };
   }
   
@@ -224,14 +249,23 @@ export const predictCandidateCall = (candidatePosition: number): {
         dynamic: dynamicAverage
       },
       remainingCalls: 0,
-      confidence: 'high'
+      confidence: 'high',
+      scenarios: {
+        pessimistic: { date: null, businessDays: 0 },
+        realistic: { date: null, businessDays: 0 },
+        optimistic: { date: null, businessDays: 0 }
+      }
     };
   }
   
-  // Calculate business days until call
-  const businessDaysUntilCall = dynamicAverage > 0 
-    ? Math.ceil(remainingCalls / dynamicAverage) 
-    : 1000; // Large number if no rate available
+  // Calculate business days until call using different scenarios
+  const realisticRate = dynamicAverage > 0 ? dynamicAverage : 0.1;
+  const pessimisticRate = realisticRate * 0.6; // 60% of realistic rate
+  const optimisticRate = realisticRate * 1.5; // 150% of realistic rate
+  
+  const realisticDays = Math.ceil(remainingCalls / realisticRate);
+  const pessimisticDays = Math.ceil(remainingCalls / pessimisticRate);
+  const optimisticDays = Math.ceil(remainingCalls / optimisticRate);
   
   // Get the most recent convocation date
   const sortedConvocations = [...convocations]
@@ -243,8 +277,10 @@ export const predictCandidateCall = (candidatePosition: number): {
     baseDate = new Date(sortedConvocations[0].date);
   }
   
-  // Calculate predicted date by adding business days
-  const predictedDate = addBusinessDays(baseDate, businessDaysUntilCall);
+  // Calculate predicted dates for each scenario
+  const realisticDate = addBusinessDays(baseDate, realisticDays);
+  const pessimisticDate = addBusinessDays(baseDate, pessimisticDays);
+  const optimisticDate = addBusinessDays(baseDate, optimisticDays);
   
   // Determine confidence level
   let confidence: 'high' | 'medium' | 'low' = 'low';
@@ -255,16 +291,30 @@ export const predictCandidateCall = (candidatePosition: number): {
   }
   
   return {
-    predictedDate,
-    estimatedBusinessDays: businessDaysUntilCall,
+    predictedDate: realisticDate,
+    estimatedBusinessDays: realisticDays,
     averageCallsPerDay: {
       overall: parseFloat(regressionSlope.toFixed(2)),
       last30Days: parseFloat(recentAverages.last30Days.toFixed(2)),
       last90Days: parseFloat(recentAverages.last90Days.toFixed(2)),
-      dynamic: parseFloat(dynamicAverage.toFixed(2))
+      dynamic: parseFloat(realisticRate.toFixed(2))
     },
     remainingCalls,
-    confidence
+    confidence,
+    scenarios: {
+      pessimistic: { 
+        date: pessimisticDate, 
+        businessDays: pessimisticDays 
+      },
+      realistic: { 
+        date: realisticDate, 
+        businessDays: realisticDays 
+      },
+      optimistic: { 
+        date: optimisticDate, 
+        businessDays: optimisticDays 
+      }
+    }
   };
 };
 
@@ -287,4 +337,41 @@ export const getCallProgress = (candidatePosition: number): number => {
   // Calculate progress
   const progress = (highestCalledPosition / candidatePosition) * 100;
   return Math.min(99, progress); // Cap at 99% until actually called
+};
+
+// Get document warnings for predicted call date
+export const getDocumentWarnings = (predictedDate: Date | null): {
+  criticalDocuments: Document[];
+  expiringDocuments: Document[];
+} => {
+  if (!predictedDate) {
+    return {
+      criticalDocuments: [],
+      expiringDocuments: []
+    };
+  }
+  
+  // Get documents with problems (missing, expired, incomplete)
+  const criticalDocuments = getDocumentsWithProblems();
+  
+  // Get documents that will expire before or shortly after the predicted date
+  const expiringDocuments = getDocumentsExpiringBeforeDate(predictedDate, 15);
+  
+  return {
+    criticalDocuments,
+    expiringDocuments
+  };
+};
+
+// Calculate available positions based on withdrawals and eliminations
+export const getAvailablePositions = (): number => {
+  const candidates = getCandidates();
+  
+  // Count candidates by status
+  const eliminated = candidates.filter(c => c.status === 'eliminated').length;
+  const withdrawn = candidates.filter(c => c.status === 'withdrawn').length;
+  const called = candidates.filter(c => c.status === 'called' || c.status === 'appointed').length;
+  
+  // Calculate available positions
+  return (eliminated + withdrawn) - called;
 };

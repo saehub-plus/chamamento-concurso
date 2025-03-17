@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Document } from '@/types';
 import { Checkbox } from './ui/checkbox';
-import { Calendar as CalendarIcon, ExternalLink, FileCheck, FilePlus, Info, Plus, Trash } from 'lucide-react';
+import { Calendar as CalendarIcon, ExternalLink, FileCheck, FilePlus, Info, Plus, Trash, AlertTriangle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
@@ -19,6 +19,7 @@ import { isDocumentExpired } from '@/utils/storage';
 interface DocumentCardProps {
   document: Document;
   onUpdate: (id: string, document: Partial<Document>) => void;
+  activeTab?: string;
 }
 
 // Helper to get readable validity period
@@ -43,7 +44,7 @@ const brazilianStates = [
   'SP', 'SE', 'TO'
 ];
 
-export function DocumentCard({ document, onUpdate }: DocumentCardProps) {
+export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProps) {
   const [issueDate, setIssueDate] = useState<Date | undefined>(
     document.issueDate ? parseISO(document.issueDate) : undefined
   );
@@ -111,6 +112,10 @@ export function DocumentCard({ document, onUpdate }: DocumentCardProps) {
     }
   };
 
+  const handleHasNotarizedCopy = (checked: boolean) => {
+    onUpdate(document.id, { hasNotarizedCopy: checked });
+  };
+
   // Check if the document is expired
   const expired = document.expirationDate && isDocumentExpired(document);
 
@@ -170,12 +175,50 @@ export function DocumentCard({ document, onUpdate }: DocumentCardProps) {
   const requiredDoses = getRequiredDoses();
   const isStateDocument = document.name === "Certidão Negativa Ético-Disciplinar do Conselho" || 
                          document.name === "Comprovante de Quitação da Anuidade do Conselho";
+  const requiresNotarizedCopy = ["Declaração de Não Penalidades", "Declaração de Não Acumulação de Cargos", "Declaração de Bens"].includes(document.name);
+
+  // New logic to check if the document is complete
+  const isDocumentComplete = () => {
+    if (!document.hasDocument) return false;
+    
+    // Check for Google Drive link requirement
+    if (!document.driveLink && !isStateDocument) return false;
+    
+    // For state documents, check if all selected states have links
+    if (isStateDocument) {
+      if (!document.states || document.states.length === 0) return false;
+      return document.states.every(state => 
+        document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
+      );
+    }
+    
+    // For vaccines, check if schedule is valid
+    if (isVaccine) {
+      return isVaccineScheduleValid();
+    }
+    
+    // For documents requiring notarized copy
+    if (requiresNotarizedCopy && !document.hasNotarizedCopy) {
+      return false;
+    }
+    
+    return !expired;
+  };
+
+  // Determine document status for filtering
+  const documentStatus = expired ? 'expired' : !document.hasDocument ? 'pending' : isDocumentComplete() ? 'completed' : 'pending';
+  
+  // Only show documents that match the active tab filter
+  if (activeTab && activeTab !== 'all' && activeTab !== documentStatus) {
+    return null;
+  }
 
   return (
     <Card className={cn(
       "transition-all duration-300 hover:shadow-md",
       expired ? "border-red-300 bg-red-50" : 
-      document.hasDocument ? "border-green-300 bg-green-50" : ""
+      isDocumentComplete() ? "border-green-300 bg-green-50" : 
+      document.hasDocument ? "border-yellow-300 bg-yellow-50" : ""
     )}>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-medium flex justify-between items-center">
@@ -196,7 +239,8 @@ export function DocumentCard({ document, onUpdate }: DocumentCardProps) {
               </TooltipProvider>
             )}
           </div>
-          {document.hasDocument && <FileCheck className="h-5 w-5 text-green-600" />}
+          {isDocumentComplete() && <FileCheck className="h-5 w-5 text-green-600" />}
+          {document.hasDocument && !isDocumentComplete() && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
           {!document.hasDocument && <FilePlus className="h-5 w-5 text-gray-400" />}
         </CardTitle>
       </CardHeader>
@@ -223,6 +267,19 @@ export function DocumentCard({ document, onUpdate }: DocumentCardProps) {
             />
             <Label htmlFor={`has-physical-${document.id}`}>Tenho cópia física</Label>
           </div>
+
+          {requiresNotarizedCopy && (
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id={`has-notarized-${document.id}`}
+                checked={!!document.hasNotarizedCopy}
+                onCheckedChange={(checked) => {
+                  handleHasNotarizedCopy(!!checked);
+                }}
+              />
+              <Label htmlFor={`has-notarized-${document.id}`}>Possui firma reconhecida</Label>
+            </div>
+          )}
         </div>
         
         {/* Age input for Triple Viral Vaccine */}
@@ -327,6 +384,12 @@ export function DocumentCard({ document, onUpdate }: DocumentCardProps) {
             {isVaccine && (document.vaccineDoses || []).length === requiredDoses && !isVaccineScheduleValid() && (
               <Badge variant="outline" className="bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
                 Intervalos incorretos
+              </Badge>
+            )}
+            
+            {isVaccine && (document.vaccineDoses || []).length < requiredDoses && (
+              <Badge variant="outline" className="bg-red-50 text-red-800 hover:bg-red-100 border-red-200">
+                Esquema vacinal incompleto
               </Badge>
             )}
           </div>

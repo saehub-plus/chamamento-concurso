@@ -1,19 +1,31 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { DocumentCard } from '@/components/DocumentCard';
 import { useDocuments } from '@/utils/storage';
-import { File, FileCheck, FileWarning } from 'lucide-react';
+import { File, FileCheck, FileWarning, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { EmptyState } from '@/components/EmptyState';
 import { staggerContainer, fadeIn } from '@/utils/animations';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { isDocumentExpired, isDocumentComplete } from '@/utils/storage';
 
 export default function Documents() {
   const { documents, updateDocument, documentStatus } = useDocuments();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('all');
+  
+  // Count documents in each category for tab badges
+  const pendingCount = documents.filter(doc => 
+    !doc.hasDocument || 
+    (doc.hasDocument && !isDocumentComplete(doc) && !isDocumentExpired(doc))
+  ).length;
+  
+  const completedCount = documents.filter(doc => isDocumentComplete(doc)).length;
+  const expiredCount = documents.filter(doc => doc.hasDocument && doc.expirationDate && isDocumentExpired(doc)).length;
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -72,17 +84,115 @@ export default function Documents() {
               description="Adicione documentos para gerenciar seus itens para o concurso."
             />
           ) : (
-            <motion.div 
-              variants={fadeIn()}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
-              {documents.map((document) => (
-                <DocumentCard 
-                  key={document.id} 
-                  document={document} 
-                  onUpdate={updateDocument}
-                />
-              ))}
+            <motion.div variants={fadeIn()}>
+              <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid grid-cols-4 mb-6">
+                  <TabsTrigger value="all" className="relative">
+                    Todos
+                    <Badge className="ml-2">{documents.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="relative">
+                    Pendentes
+                    <Badge variant="outline" className="ml-2">{pendingCount}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="relative">
+                    Concluídos
+                    <Badge variant="outline" className="ml-2">{completedCount}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="expired" className="relative">
+                    Vencidos
+                    <Badge variant="destructive" className="ml-2">{expiredCount}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="all" className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {documents.map((document) => (
+                      <DocumentCard 
+                        key={document.id} 
+                        document={document} 
+                        onUpdate={updateDocument}
+                        activeTab={activeTab}
+                      />
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="pending" className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {documents
+                      .filter(doc => !doc.hasDocument || (doc.hasDocument && !isDocumentComplete(doc) && !isDocumentExpired(doc)))
+                      .map((document) => (
+                        <DocumentCard 
+                          key={document.id} 
+                          document={document} 
+                          onUpdate={updateDocument}
+                          activeTab={activeTab}
+                        />
+                      ))
+                    }
+                    {pendingCount === 0 && (
+                      <div className="col-span-3 py-10 text-center">
+                        <div className="flex flex-col items-center">
+                          <FileCheck className="h-10 w-10 text-green-500 mb-2" />
+                          <h3 className="font-medium text-lg">Sem documentos pendentes</h3>
+                          <p className="text-muted-foreground">Todos os seus documentos estão completos ou vencidos.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="completed" className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {documents
+                      .filter(doc => isDocumentComplete(doc))
+                      .map((document) => (
+                        <DocumentCard 
+                          key={document.id} 
+                          document={document} 
+                          onUpdate={updateDocument}
+                          activeTab={activeTab}
+                        />
+                      ))
+                    }
+                    {completedCount === 0 && (
+                      <div className="col-span-3 py-10 text-center">
+                        <div className="flex flex-col items-center">
+                          <AlertTriangle className="h-10 w-10 text-yellow-500 mb-2" />
+                          <h3 className="font-medium text-lg">Nenhum documento completo</h3>
+                          <p className="text-muted-foreground">Complete seus documentos para vê-los aqui.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="expired" className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {documents
+                      .filter(doc => doc.hasDocument && doc.expirationDate && isDocumentExpired(doc))
+                      .map((document) => (
+                        <DocumentCard 
+                          key={document.id} 
+                          document={document} 
+                          onUpdate={updateDocument}
+                          activeTab={activeTab}
+                        />
+                      ))
+                    }
+                    {expiredCount === 0 && (
+                      <div className="col-span-3 py-10 text-center">
+                        <div className="flex flex-col items-center">
+                          <FileCheck className="h-10 w-10 text-green-500 mb-2" />
+                          <h3 className="font-medium text-lg">Sem documentos vencidos</h3>
+                          <p className="text-muted-foreground">Nenhum dos seus documentos está vencido.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </motion.div>
           )}
         </motion.div>

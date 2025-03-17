@@ -16,7 +16,7 @@ import {
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 // Componente personalizado para o cabeçalho do calendário com seletores de mês e ano
-function CustomCaption({ displayMonth, onMonthChange }: CaptionProps) {
+function CustomCaption({ displayMonth, onMonthSelect }: CaptionProps & { onMonthSelect: (date: Date) => void }) {
   const months = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -35,13 +35,13 @@ function CustomCaption({ displayMonth, onMonthChange }: CaptionProps) {
     const monthIndex = months.findIndex(m => m === newMonth);
     if (monthIndex !== -1) {
       const newDate = new Date(year, monthIndex);
-      onMonthChange(newDate);
+      onMonthSelect(newDate);
     }
   };
   
   const handleYearChange = (newYear: string) => {
     const newDate = new Date(parseInt(newYear), month);
-    onMonthChange(newDate);
+    onMonthSelect(newDate);
   };
   
   return (
@@ -87,6 +87,11 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  // Handle month change
+  const handleMonthSelect = (date: Date) => {
+    props.onMonthChange?.(date);
+  };
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -128,7 +133,7 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-        Caption: CustomCaption
+        Caption: (captionProps) => <CustomCaption {...captionProps} onMonthSelect={handleMonthSelect} />
       }}
       {...props}
     />
