@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { DocumentCard } from '@/components/DocumentCard';
 import { useDocuments } from '@/utils/storage';
-import { File, FileCheck, FileWarning, AlertTriangle } from 'lucide-react';
+import { File, FileCheck, FileWarning, AlertTriangle, Syringe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { EmptyState } from '@/components/EmptyState';
 import { staggerContainer, fadeIn } from '@/utils/animations';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { isDocumentExpired, isDocumentComplete } from '@/utils/storage';
+import { isDocumentExpired, isDocumentComplete, hasVaccineProblem } from '@/utils/storage';
 
 export default function Documents() {
   const { documents, updateDocument, documentStatus } = useDocuments();
@@ -21,11 +21,12 @@ export default function Documents() {
   // Count documents in each category for tab badges
   const pendingCount = documents.filter(doc => 
     !doc.hasDocument || 
-    (doc.hasDocument && !isDocumentComplete(doc) && !isDocumentExpired(doc))
+    (doc.hasDocument && !isDocumentComplete(doc) && !isDocumentExpired(doc) && !hasVaccineProblem(doc))
   ).length;
   
   const completedCount = documents.filter(doc => isDocumentComplete(doc)).length;
   const expiredCount = documents.filter(doc => doc.hasDocument && doc.expirationDate && isDocumentExpired(doc)).length;
+  const vaccineProblemCount = documents.filter(doc => hasVaccineProblem(doc)).length;
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -74,6 +75,13 @@ export default function Documents() {
                   <span>{documentStatus.expired} documentos vencidos</span>
                 </Badge>
               )}
+              
+              {documentStatus.vaccineProblem > 0 && (
+                <Badge variant="outline" className="gap-1 bg-orange-50 text-orange-600 hover:bg-orange-100">
+                  <Syringe className="h-4 w-4" />
+                  <span>{documentStatus.vaccineProblem} problemas com vacinas</span>
+                </Badge>
+              )}
             </div>
           </motion.div>
 
@@ -86,7 +94,7 @@ export default function Documents() {
           ) : (
             <motion.div variants={fadeIn()}>
               <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-4 mb-6">
+                <TabsList className="grid grid-cols-5 mb-6">
                   <TabsTrigger value="all" className="relative">
                     Todos
                     <Badge className="ml-2">{documents.length}</Badge>
@@ -102,6 +110,10 @@ export default function Documents() {
                   <TabsTrigger value="expired" className="relative">
                     Vencidos
                     <Badge variant="destructive" className="ml-2">{expiredCount}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="vaccine" className="relative">
+                    Vacinas
+                    <Badge variant="outline" className="ml-2 bg-orange-100 text-orange-800">{vaccineProblemCount}</Badge>
                   </TabsTrigger>
                 </TabsList>
                 
@@ -121,7 +133,7 @@ export default function Documents() {
                 <TabsContent value="pending" className="mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {documents
-                      .filter(doc => !doc.hasDocument || (doc.hasDocument && !isDocumentComplete(doc) && !isDocumentExpired(doc)))
+                      .filter(doc => !doc.hasDocument || (doc.hasDocument && !isDocumentComplete(doc) && !isDocumentExpired(doc) && !hasVaccineProblem(doc)))
                       .map((document) => (
                         <DocumentCard 
                           key={document.id} 
@@ -136,7 +148,7 @@ export default function Documents() {
                         <div className="flex flex-col items-center">
                           <FileCheck className="h-10 w-10 text-green-500 mb-2" />
                           <h3 className="font-medium text-lg">Sem documentos pendentes</h3>
-                          <p className="text-muted-foreground">Todos os seus documentos estão completos ou vencidos.</p>
+                          <p className="text-muted-foreground">Todos os seus documentos estão completos, vencidos ou com problemas de vacinas.</p>
                         </div>
                       </div>
                     )}
@@ -187,6 +199,31 @@ export default function Documents() {
                           <FileCheck className="h-10 w-10 text-green-500 mb-2" />
                           <h3 className="font-medium text-lg">Sem documentos vencidos</h3>
                           <p className="text-muted-foreground">Nenhum dos seus documentos está vencido.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="vaccine" className="mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {documents
+                      .filter(doc => hasVaccineProblem(doc))
+                      .map((document) => (
+                        <DocumentCard 
+                          key={document.id} 
+                          document={document} 
+                          onUpdate={updateDocument}
+                          activeTab={activeTab}
+                        />
+                      ))
+                    }
+                    {vaccineProblemCount === 0 && (
+                      <div className="col-span-3 py-10 text-center">
+                        <div className="flex flex-col items-center">
+                          <FileCheck className="h-10 w-10 text-green-500 mb-2" />
+                          <h3 className="font-medium text-lg">Sem problemas com vacinas</h3>
+                          <p className="text-muted-foreground">Todas as suas vacinas têm esquemas válidos e completos.</p>
                         </div>
                       </div>
                     )}

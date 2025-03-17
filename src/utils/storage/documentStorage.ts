@@ -109,10 +109,27 @@ export const updateDocument = (id: string, document: Partial<Document>): Documen
     );
   }
   
+  // Calculate state-specific expirations
+  let stateExpirationDates = documents[documentIndex].stateExpirationDates || {};
+  if (document.stateIssueDates) {
+    const validityPeriod = documents[documentIndex].validityPeriod;
+    if (validityPeriod && validityPeriod !== 'none') {
+      Object.entries(document.stateIssueDates).forEach(([state, issueDate]) => {
+        if (issueDate) {
+          stateExpirationDates = {
+            ...stateExpirationDates,
+            [state]: calculateExpirationDate(issueDate, validityPeriod)
+          };
+        }
+      });
+    }
+  }
+  
   const updatedDocument = {
     ...documents[documentIndex],
     ...document,
     expirationDate: expirationDate || documents[documentIndex].expirationDate,
+    stateExpirationDates,
     updatedAt: new Date().toISOString(),
   };
   
@@ -138,29 +155,39 @@ export const isDocumentComplete = (document: Document): boolean => {
   // Must have the document
   if (!document.hasDocument) return false;
   
-  // Check for Google Drive link requirement
+  // Check if document is a vaccine
+  const isVaccine = ["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(document.name);
+  
+  // Check for state documents
   const isStateDocument = ["Certidão Negativa Ético-Disciplinar do Conselho", "Comprovante de Quitação da Anuidade do Conselho"].includes(document.name);
-  if (!document.driveLink && !isStateDocument) return false;
+  
+  // Check for documents requiring notarized copy
+  const requiresNotarizedCopy = ["Declaração de Não Penalidades", "Declaração de Não Acumulação de Cargos", "Declaração de Bens"].includes(document.name);
   
   // If expired, it's not complete
   if (document.expirationDate && isDocumentExpired(document)) return false;
   
-  // For state documents, check if all selected states have links
+  // Check for Google Drive link requirement (for non-vaccine, non-state documents)
+  if (!isVaccine && !isStateDocument && !document.driveLink) return false;
+  
+  // For state documents, check if all selected states have links and issue dates
   if (isStateDocument) {
     if (!document.states || document.states.length === 0) return false;
     return document.states.every(state => 
-      document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
+      document.stateLinks && 
+      document.stateLinks[state] && 
+      document.stateLinks[state].trim() !== "" &&
+      document.stateIssueDates &&
+      document.stateIssueDates[state]
     );
   }
   
   // For vaccines, check if schedule is valid
-  const isVaccine = ["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(document.name);
   if (isVaccine) {
     return isVaccineComplete(document);
   }
   
   // For documents requiring notarized copy
-  const requiresNotarizedCopy = ["Declaração de Não Penalidades", "Declaração de Não Acumulação de Cargos", "Declaração de Bens"].includes(document.name);
   if (requiresNotarizedCopy && !document.hasNotarizedCopy) {
     return false;
   }
@@ -183,6 +210,9 @@ export const getDocumentsStatus = (): DocumentsStatus => {
     isDocumentExpired(doc)
   ).length;
   
+  // Count documents with vaccine problems
+  const vaccineProblem = documents.filter(doc => hasVaccineProblem(doc)).length;
+  
   // Count missing documents
   const missing = documents.filter(doc => !doc.hasDocument).length;
   
@@ -194,6 +224,7 @@ export const getDocumentsStatus = (): DocumentsStatus => {
     completed,
     expired,
     missing,
+    vaccineProblem,
     percentage
   };
 };
@@ -244,15 +275,28 @@ export const isVaccineComplete = (document: Document): boolean => {
   return false;
 };
 
+// Check if document has a vaccine problem
+export const hasVaccineProblem = (document: Document): boolean => {
+  if (!["Vacina Hepatite B", "Vacina Tríplice Viral", "Vacina DT"].includes(document.name)) return false;
+  if (!document.hasDocument) return false;
+  
+  // If it's a vaccine and not complete, then it has a problem
+  return !isVaccineComplete(document);
+};
+
 // Check if state document is complete
 export const isStateDocumentComplete = (document: Document): boolean => {
   if (!document.states || document.states.length === 0) return false;
   
-  // Check if all selected states have links
-  if (!document.stateLinks) return false;
+  // Check if all selected states have links and issue dates
+  if (!document.stateLinks || !document.stateIssueDates) return false;
   
   return document.states.every(state => 
-    document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
+    document.stateLinks && 
+    document.stateLinks[state] && 
+    document.stateLinks[state].trim() !== "" &&
+    document.stateIssueDates &&
+    document.stateIssueDates[state]
   );
 };
 
@@ -295,7 +339,7 @@ export const getDocumentsWithProblems = (): Document[] => {
     // Check for missing Google Drive links
     if (!isVaccine && !doc.driveLink) return true;
     
-    // Check for state documents with missing links
+    // Check for state documents with missing links or issue dates
     const isStateDocument = ["Certidão Negativa Ético-Disciplinar do Conselho", "Comprovante de Quitação da Anuidade do Conselho"].includes(doc.name);
     if (isStateDocument && !isStateDocumentComplete(doc)) return true;
     
@@ -559,6 +603,7 @@ export const useDocuments = () => {
       isDocumentExpired(doc)
     ).length,
     missing: documents.filter(doc => !doc.hasDocument).length,
+    vaccineProblem: documents.filter(doc => hasVaccineProblem(doc)).length,
     percentage: documents.length > 0 
       ? Math.round((documents.filter(doc => isDocumentComplete(doc)).length / documents.length) * 100) 
       : 0

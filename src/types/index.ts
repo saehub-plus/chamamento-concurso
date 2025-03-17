@@ -52,6 +52,7 @@ export interface Document {
   validityPeriod?: ValidityPeriod;
   states?: string[]; // For documents that require state selection (e.g., council certifications)
   stateLinks?: Record<string, string>; // Links for each selected state
+  stateIssueDates?: Record<string, string>; // Issue dates for each selected state
   vaccineDoses?: string[]; // Array of dates for vaccine doses
   userAge?: number; // For Tríplice Viral vaccine
   hasNotarizedCopy?: boolean; // For documents that require notarized signatures
@@ -73,6 +74,7 @@ export interface DocumentsStatus {
   completed: number;
   expired: number;
   missing: number;
+  vaccineProblem: number; // New field for vaccine issues
   percentage: number;
 }
 

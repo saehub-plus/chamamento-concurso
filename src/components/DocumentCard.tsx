@@ -9,8 +9,6 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -44,18 +42,55 @@ const brazilianStates = [
   'SP', 'SE', 'TO'
 ];
 
+// Helper function to format date for input
+const formatDateForInput = (dateString?: string): string => {
+  if (!dateString) return '';
+  try {
+    const date = parseISO(dateString);
+    return format(date, 'yyyy-MM-dd');
+  } catch (error) {
+    return '';
+  }
+};
+
+// Helper function to parse date from input
+const parseDateFromInput = (dateString: string): string => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    return date.toISOString();
+  } catch (error) {
+    return '';
+  }
+};
+
 export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProps) {
-  const [issueDate, setIssueDate] = useState<Date | undefined>(
-    document.issueDate ? parseISO(document.issueDate) : undefined
-  );
   const [userAge, setUserAge] = useState<number | undefined>(document.userAge);
 
-  const handleIssueDateSelect = (date: Date | undefined) => {
-    setIssueDate(date);
-    if (date) {
-      onUpdate(document.id, { issueDate: date.toISOString() });
+  const handleIssueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateValue = e.target.value;
+    if (dateValue) {
+      onUpdate(document.id, { issueDate: parseDateFromInput(dateValue) });
     } else {
       onUpdate(document.id, { issueDate: undefined });
+    }
+  };
+
+  const handleStateIssueDateChange = (e: React.ChangeEvent<HTMLInputElement>, stateCode: string) => {
+    const dateValue = e.target.value;
+    const currentIssueDates = document.stateIssueDates || {};
+    
+    if (dateValue) {
+      onUpdate(document.id, { 
+        stateIssueDates: { 
+          ...currentIssueDates, 
+          [stateCode]: parseDateFromInput(dateValue) 
+        } 
+      });
+    } else {
+      const updatedDates = { ...currentIssueDates };
+      delete updatedDates[stateCode];
+      onUpdate(document.id, { stateIssueDates: updatedDates });
     }
   };
 
@@ -84,11 +119,12 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
     onUpdate(document.id, { states: updatedStates });
   };
 
-  const handleVaccineDateSelect = (date: Date | undefined, index: number) => {
-    if (!date) return;
+  const handleVaccineDateChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const dateValue = e.target.value;
+    if (!dateValue) return;
     
     const doses = [...(document.vaccineDoses || [])];
-    doses[index] = date.toISOString();
+    doses[index] = parseDateFromInput(dateValue);
     onUpdate(document.id, { vaccineDoses: doses });
   };
 
@@ -182,13 +218,17 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
     if (!document.hasDocument) return false;
     
     // Check for Google Drive link requirement
-    if (!document.driveLink && !isStateDocument) return false;
+    if (!document.driveLink && !isStateDocument && !isVaccine) return false;
     
-    // For state documents, check if all selected states have links
+    // For state documents, check if all selected states have links and issue dates
     if (isStateDocument) {
       if (!document.states || document.states.length === 0) return false;
       return document.states.every(state => 
-        document.stateLinks && document.stateLinks[state] && document.stateLinks[state].trim() !== ""
+        document.stateLinks && 
+        document.stateLinks[state] && 
+        document.stateLinks[state].trim() !== "" &&
+        document.stateIssueDates &&
+        document.stateIssueDates[state]
       );
     }
     
@@ -205,8 +245,27 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
     return !expired;
   };
 
+  // Check if document has a vaccine problem (incomplete or invalid schedule)
+  const hasVaccineProblem = () => {
+    if (!isVaccine) return false;
+    if (!document.hasDocument) return false;
+    
+    const doses = document.vaccineDoses || [];
+    
+    // Missing doses
+    if (doses.length < requiredDoses) return true;
+    
+    // Invalid schedule
+    if (!isVaccineScheduleValid()) return true;
+    
+    return false;
+  };
+
   // Determine document status for filtering
-  const documentStatus = expired ? 'expired' : !document.hasDocument ? 'pending' : isDocumentComplete() ? 'completed' : 'pending';
+  const documentStatus = expired ? 'expired' : 
+                        !document.hasDocument ? 'pending' : 
+                        hasVaccineProblem() ? 'vaccine' :
+                        isDocumentComplete() ? 'completed' : 'pending';
   
   // Only show documents that match the active tab filter
   if (activeTab && activeTab !== 'all' && activeTab !== documentStatus) {
@@ -217,6 +276,7 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
     <Card className={cn(
       "transition-all duration-300 hover:shadow-md",
       expired ? "border-red-300 bg-red-50" : 
+      hasVaccineProblem() ? "border-orange-300 bg-orange-50" :
       isDocumentComplete() ? "border-green-300 bg-green-50" : 
       document.hasDocument ? "border-yellow-300 bg-yellow-50" : ""
     )}>
@@ -240,7 +300,8 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
             )}
           </div>
           {isDocumentComplete() && <FileCheck className="h-5 w-5 text-green-600" />}
-          {document.hasDocument && !isDocumentComplete() && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
+          {hasVaccineProblem() && <AlertTriangle className="h-5 w-5 text-orange-600" />}
+          {document.hasDocument && !isDocumentComplete() && !hasVaccineProblem() && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
           {!document.hasDocument && <FilePlus className="h-5 w-5 text-gray-400" />}
         </CardTitle>
       </CardHeader>
@@ -342,27 +403,14 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
             <div className="space-y-2">
               {(document.vaccineDoses || []).map((dose, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(parseISO(dose), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={parseISO(dose)}
-                        onSelect={(date) => handleVaccineDateSelect(date, index)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <div className="flex-1">
+                    <Input
+                      type="date"
+                      value={formatDateForInput(dose)}
+                      onChange={(e) => handleVaccineDateChange(e, index)}
+                      className="w-full"
+                    />
+                  </div>
                   <Button 
                     variant="outline" 
                     size="icon" 
@@ -395,33 +443,18 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
           </div>
         )}
         
-        {document.validityPeriod && document.validityPeriod !== 'none' && !isVaccine && (
+        {document.validityPeriod && document.validityPeriod !== 'none' && !isVaccine && !isStateDocument && (
           <div className="space-y-2">
             <Label htmlFor={`issue-date-${document.id}`}>
               Data de emissão {document.validityPeriod ? `(Validade: ${getReadableValidityPeriod(document.validityPeriod)})` : ''}
             </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !issueDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {issueDate ? format(issueDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "Selecione a data"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={issueDate}
-                  onSelect={handleIssueDateSelect}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              id={`issue-date-${document.id}`}
+              type="date"
+              value={formatDateForInput(document.issueDate)}
+              onChange={handleIssueDateChange}
+              className="w-full"
+            />
           </div>
         )}
 
@@ -463,59 +496,74 @@ export function DocumentCard({ document, onUpdate, activeTab }: DocumentCardProp
         {isStateDocument ? (
           // For documents that require state-specific links
           <div className="space-y-4">
-            <Label>Links para cada estado selecionado:</Label>
+            <Label>Informações para cada estado selecionado:</Label>
             {(document.states || []).length === 0 && (
               <p className="text-sm text-muted-foreground">Selecione pelo menos um estado acima</p>
             )}
             {(document.states || []).map(state => (
-              <div key={state} className="space-y-2">
-                <Label htmlFor={`link-${document.id}-${state}`}>{state}</Label>
-                <div className="flex items-center space-x-2">
+              <div key={state} className="space-y-2 border-b pb-4 last:border-b-0">
+                <div className="font-medium">{state}</div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor={`link-${document.id}-${state}`}>Link do documento</Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id={`link-${document.id}-${state}`}
+                      type="url"
+                      placeholder={`Link para ${state}`}
+                      value={(document.stateLinks && document.stateLinks[state]) || ""}
+                      onChange={(e) => handleLinkChange(e, state)}
+                      className="flex-1"
+                    />
+                    {document.stateLinks && document.stateLinks[state] && (
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => window.open(document.stateLinks?.[state], '_blank')}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <Label htmlFor={`issue-date-${document.id}-${state}`}>Data de emissão</Label>
                   <Input
-                    id={`link-${document.id}-${state}`}
-                    type="url"
-                    placeholder={`Link para ${state}`}
-                    value={(document.stateLinks && document.stateLinks[state]) || ""}
-                    onChange={(e) => handleLinkChange(e, state)}
-                    className="flex-1"
+                    id={`issue-date-${document.id}-${state}`}
+                    type="date"
+                    value={formatDateForInput(document.stateIssueDates?.[state])}
+                    onChange={(e) => handleStateIssueDateChange(e, state)}
+                    className="w-full"
                   />
-                  {document.stateLinks && document.stateLinks[state] && (
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => window.open(document.stateLinks?.[state], '_blank')}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           // For regular documents
-          <div className="space-y-2">
-            <Label htmlFor={`link-${document.id}`}>Link no Google Drive</Label>
-            <div className="flex items-center space-x-2">
-              <Input
-                id={`link-${document.id}`}
-                type="url"
-                placeholder="https://drive.google.com/..."
-                value={document.driveLink || ""}
-                onChange={(e) => handleLinkChange(e)}
-                className="flex-1"
-              />
-              {document.driveLink && (
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => window.open(document.driveLink, '_blank')}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
+          !isVaccine && (
+            <div className="space-y-2">
+              <Label htmlFor={`link-${document.id}`}>Link no Google Drive</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id={`link-${document.id}`}
+                  type="url"
+                  placeholder="https://drive.google.com/..."
+                  value={document.driveLink || ""}
+                  onChange={(e) => handleLinkChange(e)}
+                  className="flex-1"
+                />
+                {document.driveLink && (
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => window.open(document.driveLink, '_blank')}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )
         )}
       </CardContent>
       <CardFooter className="pt-0 text-xs text-muted-foreground">
