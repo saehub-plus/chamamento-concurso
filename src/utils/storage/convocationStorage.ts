@@ -1,5 +1,6 @@
 
 import { Convocation } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 // Storage keys
 const CONVOCATIONS_KEY = 'joinville-nurses-convocations';
@@ -25,6 +26,20 @@ export const addConvocation = (convocation: Omit<Convocation, 'id' | 'createdAt'
   };
   
   saveConvocations([...convocations, newConvocation]);
+  
+  // Show toast notification
+  if (newConvocation.hasCalled && newConvocation.calledCandidates.length > 0) {
+    toast({
+      title: "Convocação registrada",
+      description: `${newConvocation.calledCandidates.length} candidato(s) foram convocados.`
+    });
+  } else {
+    toast({
+      title: "Data de convocação registrada",
+      description: `Data de ${new Date(newConvocation.date).toLocaleDateString('pt-BR')} foi registrada.`
+    });
+  }
+  
   return newConvocation;
 };
 
@@ -41,6 +56,13 @@ export const addMultipleEmptyConvocations = (dates: Date[]): Convocation[] => {
   }));
   
   saveConvocations([...convocations, ...newConvocations]);
+  
+  // Show toast notification
+  toast({
+    title: "Datas de convocação registradas",
+    description: `${dates.length} novas datas foram adicionadas.`
+  });
+  
   return newConvocations;
 };
 
@@ -51,13 +73,22 @@ export const updateConvocation = (id: string, updates: Partial<Convocation>): Co
   
   if (convocationIndex === -1) return null;
   
+  const oldConvocation = convocations[convocationIndex];
   const updatedConvocation = {
-    ...convocations[convocationIndex],
+    ...oldConvocation,
     ...updates
   };
   
   convocations[convocationIndex] = updatedConvocation;
   saveConvocations(convocations);
+  
+  // Show toast notification for significant changes
+  if (updates.hasCalled && !oldConvocation.hasCalled) {
+    toast({
+      title: "Convocação atualizada",
+      description: "Candidatos foram adicionados à convocação."
+    });
+  }
   
   return updatedConvocation;
 };
@@ -70,6 +101,13 @@ export const deleteConvocation = (id: string): boolean => {
   if (filteredConvocations.length === convocations.length) return false;
   
   saveConvocations(filteredConvocations);
+  
+  // Show toast notification
+  toast({
+    title: "Convocação removida",
+    description: "A convocação foi removida com sucesso."
+  });
+  
   return true;
 };
 
@@ -79,4 +117,10 @@ export const getLatestConvocations = (limit = 5): Convocation[] => {
   return [...convocations]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, limit);
+};
+
+// Get convocations with candidates (for dashboard count)
+export const getConvocationsWithCandidates = (): Convocation[] => {
+  const convocations = getConvocations();
+  return convocations.filter(c => c.hasCalled && c.calledCandidates.length > 0);
 };

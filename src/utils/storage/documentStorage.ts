@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentsStatus } from '@/types';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { addDays, addMonths, addYears, isAfter, parseISO, differenceInDays } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
 
 const STORAGE_KEY = 'documents';
 
@@ -89,6 +90,12 @@ export const addDocument = (document: Omit<Document, 'id' | 'createdAt' | 'updat
     updatedAt: new Date().toISOString(),
   };
   
+  // Show toast notification
+  toast({
+    title: "Documento adicionado",
+    description: `${document.name} foi adicionado com sucesso.`
+  });
+  
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...documents, newDocument]));
   
   return newDocument;
@@ -106,6 +113,8 @@ export const updateDocument = (id: string, document: Partial<Document>): Documen
   const documentIndex = documents.findIndex(doc => doc.id === id);
   
   if (documentIndex === -1) return null;
+  
+  const oldStatus = isDocumentComplete(documents[documentIndex]);
   
   // Calculate expiration date if issue date is updated
   let expirationDate = document.expirationDate;
@@ -146,6 +155,17 @@ export const updateDocument = (id: string, document: Partial<Document>): Documen
   
   documents[documentIndex] = updatedDocument;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
+  
+  // Check if the document status changed
+  const newStatus = isDocumentComplete(updatedDocument);
+  if (oldStatus !== newStatus) {
+    toast({
+      title: "Status do documento alterado",
+      description: newStatus 
+        ? `${updatedDocument.name} está completo agora.` 
+        : `${updatedDocument.name} está incompleto.`
+    });
+  }
   
   return updatedDocument;
 };
@@ -415,7 +435,7 @@ export const useDocuments = () => {
         hasPhysicalCopy: false,
         isValid: true,
         validityPeriod: 'none',
-        vaccineDoses: [],
+        vaccineDoses: [], // Empty array for vaccine doses
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -426,7 +446,7 @@ export const useDocuments = () => {
         hasPhysicalCopy: false,
         isValid: true,
         validityPeriod: 'none',
-        vaccineDoses: [],
+        vaccineDoses: [], // Empty array for vaccine doses
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -437,7 +457,7 @@ export const useDocuments = () => {
         hasPhysicalCopy: false,
         isValid: true,
         validityPeriod: 'none',
-        vaccineDoses: [],
+        vaccineDoses: [], // Empty array for vaccine doses
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
