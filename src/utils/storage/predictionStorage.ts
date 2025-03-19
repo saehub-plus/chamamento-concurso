@@ -142,7 +142,7 @@ export const predictCandidateCall = (position: number, referenceDate: Date = new
   }
   
   // Calculate predicted date
-  let predictedDate = referenceDate;
+  let predictedDate = new Date(referenceDate);
   let daysToAdd = estimatedBusinessDays;
   
   while (daysToAdd > 0) {

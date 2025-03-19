@@ -1,15 +1,21 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
-import { UpdatePredictionDate } from './UpdatePredictionDate';
+import { toast } from '@/hooks/use-toast';
 
 interface PredictionActionsProps {
-  onUpdateDate: (date: Date) => void;
+  onUpdateDate: () => void;
 }
 
 export function PredictionActions({ onUpdateDate }: PredictionActionsProps) {
-  const [showUpdateDate, setShowUpdateDate] = useState(false);
+  const handleRecalculate = () => {
+    onUpdateDate();
+    toast({
+      title: "Previsão atualizada",
+      description: "A previsão de chamamento foi recalculada com sucesso."
+    });
+  };
   
   return (
     <div className="space-y-3">
@@ -17,18 +23,11 @@ export function PredictionActions({ onUpdateDate }: PredictionActionsProps) {
         variant="outline" 
         size="sm" 
         className="w-full flex items-center justify-center gap-2"
-        onClick={() => setShowUpdateDate(!showUpdateDate)}
+        onClick={handleRecalculate}
       >
         <RefreshCw className="h-4 w-4" />
-        {showUpdateDate ? 'Cancelar' : 'Atualizar data de referência'}
+        Recalcular previsão
       </Button>
-      
-      {showUpdateDate && (
-        <UpdatePredictionDate 
-          onUpdateDate={onUpdateDate}
-          currentDate={new Date()}
-        />
-      )}
     </div>
   );
 }

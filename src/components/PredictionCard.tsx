@@ -52,7 +52,7 @@ export function PredictionCard() {
   });
 
   // Function to calculate prediction and set user info
-  const calculatePrediction = (referenceDate: Date = new Date()) => {
+  const calculatePrediction = () => {
     const currentUserId = getCurrentUserId();
     if (!currentUserId) {
       setHasUser(false);
@@ -66,7 +66,7 @@ export function PredictionCard() {
       setUserPosition(candidate.position);
       
       // Calculate prediction
-      const candidatePrediction = predictCandidateCall(candidate.position, referenceDate);
+      const candidatePrediction = predictCandidateCall(candidate.position, new Date());
       setPrediction({
         date: candidatePrediction.predictedDate ? 
           format(candidatePrediction.predictedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 
@@ -90,10 +90,6 @@ export function PredictionCard() {
     calculatePrediction();
   }, []);
 
-  const handleUpdateDate = (date: Date) => {
-    calculatePrediction(date);
-  };
-  
   // Show placeholder when no user is identified
   if (!hasUser) {
     return (
@@ -144,7 +140,7 @@ export function PredictionCard() {
           <PredictionProgress progress={progress} />
           
           {/* Actions */}
-          <PredictionActions onUpdateDate={handleUpdateDate} />
+          <PredictionActions onUpdateDate={calculatePrediction} />
           
           {/* Detailed Prediction Analysis */}
           <PredictionDetails prediction={prediction} />
