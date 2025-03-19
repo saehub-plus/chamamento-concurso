@@ -81,7 +81,7 @@ export function PredictionCard() {
   const currentUserId = getCurrentUserId();
   const candidate = currentUserId ? getCandidateById(currentUserId) : null;
 
-  // useEffect para recalcular a previsão sempre que o número de candidatos ou a posição do candidato mudar
+  // useEffect para recalcular a previsão quando o id ou posição do candidato, o total de candidatos ou o currentUserId mudar
   useEffect(() => {
     console.log("[PredictionCard] Iniciando useEffect com currentUserId:", currentUserId);
     if (!currentUserId || !candidate) {
@@ -110,7 +110,7 @@ export function PredictionCard() {
     const progressPercent = getCallProgress(candidate.position);
     console.log("[PredictionCard] Progresso calculado:", progressPercent);
     setProgress(progressPercent);
-  }, [candidate, candidate.position, candidates.length, currentUserId]);
+  }, [candidate?.id, candidate?.position, candidates.length, currentUserId]);
 
   const motivational = getMotivationalMessage(progress);
 
