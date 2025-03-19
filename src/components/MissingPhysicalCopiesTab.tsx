@@ -7,11 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { Document } from '@/types';
 import { FileCheck, AlertTriangle } from 'lucide-react';
 
-interface MissingPhysicalCopiesTabProps {
-  onDocumentUpdated?: () => void; // Callback for parent component
-}
-
-export function MissingPhysicalCopiesTab({ onDocumentUpdated }: MissingPhysicalCopiesTabProps) {
+export function MissingPhysicalCopiesTab() {
   const [documents, setDocuments] = React.useState<Document[]>([]);
   
   React.useEffect(() => {
@@ -39,11 +35,6 @@ export function MissingPhysicalCopiesTab({ onDocumentUpdated }: MissingPhysicalC
         title: checked ? "Cópia física registrada" : "Cópia física removida",
         description: `${updatedDoc.name} ${checked ? 'agora tem' : 'não tem mais'} cópia física.`
       });
-      
-      // Notify parent component about the update
-      if (onDocumentUpdated) {
-        onDocumentUpdated();
-      }
     }
   };
   
