@@ -83,8 +83,10 @@ export function PredictionCard() {
 
   // useEffect para recalcular a previsão sempre que o número de candidatos ou a posição do candidato mudar
   useEffect(() => {
+    console.log("[PredictionCard] Iniciando useEffect com currentUserId:", currentUserId);
     if (!currentUserId || !candidate) {
       setHasUser(false);
+      console.log("[PredictionCard] Nenhum candidato encontrado.");
       return;
     }
     setHasUser(true);
@@ -93,6 +95,8 @@ export function PredictionCard() {
     
     // Recalcula a previsão com base na posição do candidato
     const candidatePrediction = predictCandidateCall(candidate.position);
+    console.log("[PredictionCard] Resultado de predictCandidateCall:", candidatePrediction);
+
     setPrediction({
       date: candidatePrediction.predictedDate ? 
         format(candidatePrediction.predictedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 
@@ -104,6 +108,7 @@ export function PredictionCard() {
     });
     
     const progressPercent = getCallProgress(candidate.position);
+    console.log("[PredictionCard] Progresso calculado:", progressPercent);
     setProgress(progressPercent);
   }, [candidate, candidate.position, candidates.length, currentUserId]);
 
