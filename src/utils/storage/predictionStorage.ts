@@ -1,378 +1,182 @@
 
-import { getConvocations } from './convocationStorage';
-import { getCandidates } from './candidateStorage';
-import { addBusinessDays, differenceInBusinessDays, isWeekend, subBusinessDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { getDocumentsWithProblems, getDocumentsExpiringBeforeDate } from './documentStorage';
-import { Document } from '@/types';
+import { format, addBusinessDays, differenceInBusinessDays, isSaturday, isSunday, isWeekend } from 'date-fns';
+import { getAllConvocations, getCandidateById } from '@/utils/storage';
 
-// Check if a date is a business day (not weekend)
-const isBusinessDay = (date: Date): boolean => {
-  return !isWeekend(date);
-};
-
-// Calculate total candidates called up to a specific date
-const getCandidatesCalledByDate = () => {
-  const convocations = getConvocations();
-  const candidates = getCandidates();
-
-  // Map of date -> number of candidates called
-  const dateMap: { [key: string]: number } = {};
+/**
+ * Calculates the average number of calls per day from convocation data.
+ * @returns Object containing different average calculations
+ */
+export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) => {
+  const convocations = getAllConvocations();
   
-  // Get called candidates with their dates
-  const calledCandidates = candidates.filter(c => 
-    c.status === 'called' || c.status === 'appointed'
-  );
-  
-  // Create a sorted list of all business days from the first to the last convocation
-  const sortedConvocations = [...convocations]
-    .filter(c => c.hasCalled)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  
-  if (sortedConvocations.length === 0) {
-    return [];
-  }
-  
-  // For each convocation with calls, record how many candidates were called
-  sortedConvocations.forEach(convocation => {
-    const dateStr = new Date(convocation.date).toISOString().split('T')[0];
-    const candidatesCalled = convocation.calledCandidates?.length || 0;
-    dateMap[dateStr] = (dateMap[dateStr] || 0) + candidatesCalled;
-  });
-  
-  // Convert to array of {date, totalCalled}
-  const result = Object.entries(dateMap).map(([dateStr, called]) => ({
-    date: new Date(dateStr),
-    called,
-  }));
-  
-  // Sort by date
-  result.sort((a, b) => a.date.getTime() - b.date.getTime());
-  
-  // Add cumulative total
-  let cumulativeTotal = 0;
-  const finalResult = result.map(item => {
-    cumulativeTotal += item.called;
+  if (convocations.length <= 1) {
     return {
-      date: item.date,
-      called: item.called,
-      cumulativeTotal
+      overall: 0.5,
+      last30Days: 0.5,
+      last90Days: 0.5,
+      dynamic: 0.5
     };
-  });
-  
-  return finalResult;
-};
-
-// Calculate regression slope for call rate
-const calculateRegressionSlope = (data: { date: Date; cumulativeTotal: number }[]): number => {
-  if (data.length < 2) return 0;
-  
-  // Use only business days for x-axis
-  const baseDate = data[0].date;
-  const points = data.map(point => ({
-    x: differenceInBusinessDays(point.date, baseDate),
-    y: point.cumulativeTotal
-  }));
-  
-  // Simple linear regression
-  let sumX = 0;
-  let sumY = 0;
-  let sumXY = 0;
-  let sumXX = 0;
-  const n = points.length;
-  
-  for (const point of points) {
-    sumX += point.x;
-    sumY += point.y;
-    sumXY += point.x * point.y;
-    sumXX += point.x * point.x;
   }
   
-  // Calculate slope (calls per business day)
-  if (sumXX === sumX * sumX / n) {
-    return 0; // Avoid division by zero
-  }
-  
-  const slope = (sumXY - (sumX * sumY) / n) / (sumXX - (sumX * sumX) / n);
-  return slope;
-};
-
-// Calculate recent average call rates (last 30 and 90 business days)
-const calculateRecentAverages = (data: { date: Date; called: number; cumulativeTotal: number }[]) => {
-  if (data.length === 0) {
-    return { last30Days: 0, last90Days: 0 };
-  }
-  
-  const today = new Date();
-  const last30BusinessDays = data.filter(item => 
-    differenceInBusinessDays(today, item.date) <= 30
+  // Sort convocations by date
+  const sortedConvocations = [...convocations].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
   );
   
-  const last90BusinessDays = data.filter(item => 
-    differenceInBusinessDays(today, item.date) <= 90
+  // Calculate total business days between first and last convocation
+  const firstDate = new Date(sortedConvocations[0].date);
+  const lastDate = new Date(sortedConvocations[sortedConvocations.length - 1].date);
+  
+  let businessDays = 0;
+  let currentDate = new Date(firstDate);
+  
+  while (currentDate <= lastDate) {
+    if (!isWeekend(currentDate)) {
+      businessDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  // Calculate overall average (excluding convocations without candidates)
+  const convocationsWithCandidates = sortedConvocations.filter(conv => conv.candidateId).length;
+  const overallAverage = businessDays > 0 ? convocationsWithCandidates / businessDays : 0.5;
+  
+  // Calculate 30-day average
+  const thirtyDaysAgo = new Date(referenceDate);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const last30DaysConvocations = sortedConvocations.filter(
+    conv => new Date(conv.date) >= thirtyDaysAgo && conv.candidateId
   );
   
-  // Calculate totals
-  const total30Days = last30BusinessDays.reduce((sum, item) => sum + item.called, 0);
-  const total90Days = last90BusinessDays.reduce((sum, item) => sum + item.called, 0);
+  const last30DaysBusinessDays = Math.min(businessDays, 22); // ~22 business days in 30 calendar days
+  const last30DaysAverage = last30DaysBusinessDays > 0 
+    ? last30DaysConvocations.length / last30DaysBusinessDays 
+    : overallAverage;
   
-  // Calculate averages per business day
-  const days30 = last30BusinessDays.length > 0 ? last30BusinessDays.length : 1;
-  const days90 = last90BusinessDays.length > 0 ? last90BusinessDays.length : 1;
+  // Calculate 90-day average
+  const ninetyDaysAgo = new Date(referenceDate);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  
+  const last90DaysConvocations = sortedConvocations.filter(
+    conv => new Date(conv.date) >= ninetyDaysAgo && conv.candidateId
+  );
+  
+  const last90DaysBusinessDays = Math.min(businessDays, 65); // ~65 business days in 90 calendar days
+  const last90DaysAverage = last90DaysBusinessDays > 0 
+    ? last90DaysConvocations.length / last90DaysBusinessDays 
+    : overallAverage;
+  
+  // Dynamic weighted average - gives more weight to recent data
+  const dynamicAverage = (
+    (overallAverage * 1) + 
+    (last90DaysAverage * 2) + 
+    (last30DaysAverage * 3)
+  ) / 6;
   
   return {
-    last30Days: total30Days / days30,
-    last90Days: total90Days / days90
+    overall: parseFloat(overallAverage.toFixed(2)),
+    last30Days: parseFloat(last30DaysAverage.toFixed(2)),
+    last90Days: parseFloat(last90DaysAverage.toFixed(2)),
+    dynamic: parseFloat(dynamicAverage.toFixed(2))
   };
 };
 
-// Calculate weighted dynamic average
-const calculateDynamicAverage = (recent: { last30Days: number, last90Days: number }, regression: number) => {
-  // If we don't have enough data, default to regression or a small positive number
-  if (recent.last30Days === 0 && recent.last90Days === 0) {
-    return Math.max(regression, 0.1);
-  }
+/**
+ * Predicts when a candidate will be called based on their position
+ * @param position The candidate's position in the list
+ * @returns Prediction information
+ */
+export const predictCandidateCall = (position: number, referenceDate: Date = new Date()) => {
+  // Get all convocations and check how many positions are called already
+  const convocations = getAllConvocations();
+  const convocationsWithCandidates = convocations.filter(conv => conv.candidateId);
   
-  // Weight recent data more heavily (70% last 30 days, 30% last 90 days)
-  const weight30 = 0.7;
-  const weight90 = 0.3;
+  // Get the highest position called
+  let highestPositionCalled = 0;
   
-  // If one of the periods has no data, use the other
-  if (recent.last30Days === 0) {
-    return recent.last90Days;
-  }
-  if (recent.last90Days === 0) {
-    return recent.last30Days;
-  }
-  
-  return (recent.last30Days * weight30) + (recent.last90Days * weight90);
-};
-
-// Calculate call prediction based on historical data
-export const predictCandidateCall = (candidatePosition: number): { 
-  predictedDate: Date | null;
-  estimatedBusinessDays: number;
-  averageCallsPerDay: {
-    overall: number;
-    last30Days: number;
-    last90Days: number;
-    dynamic: number;
-  };
-  remainingCalls: number;
-  confidence: 'high' | 'medium' | 'low';
-  scenarios: {
-    pessimistic: {
-      date: Date | null;
-      businessDays: number;
-    };
-    realistic: {
-      date: Date | null;
-      businessDays: number;
-    };
-    optimistic: {
-      date: Date | null;
-      businessDays: number;
-    };
-  }
-} => {
-  const convocations = getConvocations();
-  const candidates = getCandidates();
-  
-  // No convocations yet
-  if (convocations.length === 0) {
-    return { 
-      predictedDate: null,
-      estimatedBusinessDays: 0,
-      averageCallsPerDay: {
-        overall: 0,
-        last30Days: 0,
-        last90Days: 0,
-        dynamic: 0
-      },
-      remainingCalls: 0,
-      confidence: 'low',
-      scenarios: {
-        pessimistic: { date: null, businessDays: 0 },
-        realistic: { date: null, businessDays: 0 },
-        optimistic: { date: null, businessDays: 0 }
-      }
-    };
-  }
-  
-  // Get data for analysis
-  const calledData = getCandidatesCalledByDate();
-  
-  if (calledData.length === 0) {
-    return { 
-      predictedDate: null,
-      estimatedBusinessDays: 0,
-      averageCallsPerDay: {
-        overall: 0,
-        last30Days: 0,
-        last90Days: 0,
-        dynamic: 0
-      },
-      remainingCalls: 0,
-      confidence: 'low',
-      scenarios: {
-        pessimistic: { date: null, businessDays: 0 },
-        realistic: { date: null, businessDays: 0 },
-        optimistic: { date: null, businessDays: 0 }
-      }
-    };
-  }
-  
-  // Calculate metrics
-  const regressionSlope = calculateRegressionSlope(calledData);
-  const recentAverages = calculateRecentAverages(calledData);
-  const dynamicAverage = calculateDynamicAverage(recentAverages, regressionSlope);
-  
-  // Get the highest position that has been called
-  const highestCalledPosition = Math.max(
-    0,
-    ...candidates
-      .filter(c => c.status === 'called' || c.status === 'appointed')
-      .map(c => c.position)
-  );
-  
-  // Calculate remaining calls before reaching the candidate
-  const remainingCalls = candidatePosition - highestCalledPosition;
-  
-  // If candidate is already called or position is invalid
-  if (remainingCalls <= 0) {
-    return {
-      predictedDate: null,
-      estimatedBusinessDays: 0,
-      averageCallsPerDay: {
-        overall: regressionSlope,
-        last30Days: recentAverages.last30Days,
-        last90Days: recentAverages.last90Days,
-        dynamic: dynamicAverage
-      },
-      remainingCalls: 0,
-      confidence: 'high',
-      scenarios: {
-        pessimistic: { date: null, businessDays: 0 },
-        realistic: { date: null, businessDays: 0 },
-        optimistic: { date: null, businessDays: 0 }
-      }
-    };
-  }
-  
-  // Calculate business days until call using different scenarios
-  const realisticRate = dynamicAverage > 0 ? dynamicAverage : 0.1;
-  const pessimisticRate = realisticRate * 0.6; // 60% of realistic rate
-  const optimisticRate = realisticRate * 1.5; // 150% of realistic rate
-  
-  const realisticDays = Math.ceil(remainingCalls / realisticRate);
-  const pessimisticDays = Math.ceil(remainingCalls / pessimisticRate);
-  const optimisticDays = Math.ceil(remainingCalls / optimisticRate);
-  
-  // Get the most recent convocation date
-  const sortedConvocations = [...convocations]
-    .filter(c => c.hasCalled)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
-  let baseDate = new Date();
-  if (sortedConvocations.length > 0) {
-    baseDate = new Date(sortedConvocations[0].date);
-  }
-  
-  // Calculate predicted dates for each scenario
-  const realisticDate = addBusinessDays(baseDate, realisticDays);
-  const pessimisticDate = addBusinessDays(baseDate, pessimisticDays);
-  const optimisticDate = addBusinessDays(baseDate, optimisticDays);
-  
-  // Determine confidence level
-  let confidence: 'high' | 'medium' | 'low' = 'low';
-  if (calledData.length > 5 && dynamicAverage > 0) {
-    confidence = 'high';
-  } else if (calledData.length > 2 && dynamicAverage > 0) {
-    confidence = 'medium';
-  }
-  
-  return {
-    predictedDate: realisticDate,
-    estimatedBusinessDays: realisticDays,
-    averageCallsPerDay: {
-      overall: parseFloat(regressionSlope.toFixed(2)),
-      last30Days: parseFloat(recentAverages.last30Days.toFixed(2)),
-      last90Days: parseFloat(recentAverages.last90Days.toFixed(2)),
-      dynamic: parseFloat(realisticRate.toFixed(2))
-    },
-    remainingCalls,
-    confidence,
-    scenarios: {
-      pessimistic: { 
-        date: pessimisticDate, 
-        businessDays: pessimisticDays 
-      },
-      realistic: { 
-        date: realisticDate, 
-        businessDays: realisticDays 
-      },
-      optimistic: { 
-        date: optimisticDate, 
-        businessDays: optimisticDays 
+  convocationsWithCandidates.forEach(conv => {
+    if (conv.candidateId) {
+      const candidate = getCandidateById(conv.candidateId);
+      if (candidate && candidate.position > highestPositionCalled) {
+        highestPositionCalled = candidate.position;
       }
     }
-  };
-};
-
-// Get progress to being called (percentage)
-export const getCallProgress = (candidatePosition: number): number => {
-  const candidates = getCandidates();
+  });
   
-  if (candidates.length === 0) return 0;
+  // Calculate how many positions remain to be called before the given position
+  const remainingCalls = position - highestPositionCalled;
   
-  // Find highest called position
-  const highestCalledPosition = Math.max(
-    0,
-    ...candidates
-      .filter(c => c.status === 'called' || c.status === 'appointed')
-      .map(c => c.position)
-  );
-  
-  if (highestCalledPosition === 0) return 0;
-  
-  // Calculate progress
-  const progress = (highestCalledPosition / candidatePosition) * 100;
-  return Math.min(99, progress); // Cap at 99% until actually called
-};
-
-// Get document warnings for predicted call date
-export const getDocumentWarnings = (predictedDate: Date | null): {
-  criticalDocuments: Document[];
-  expiringDocuments: Document[];
-} => {
-  if (!predictedDate) {
+  if (remainingCalls <= 0) {
+    // Candidate has already been called or should have been called
     return {
-      criticalDocuments: [],
-      expiringDocuments: []
+      predictedDate: null,
+      estimatedBusinessDays: 0,
+      remainingCalls: 0,
+      averageCallsPerDay: calculateAverageCallsPerDay(referenceDate),
+      confidence: 'high' as 'high' | 'medium' | 'low'
     };
   }
   
-  // Get documents with problems (missing, expired, incomplete)
-  const criticalDocuments = getDocumentsWithProblems();
+  // Get average calls per day from historical data
+  const averageCalls = calculateAverageCallsPerDay(referenceDate);
   
-  // Get documents that will expire before or shortly after the predicted date
-  const expiringDocuments = getDocumentsExpiringBeforeDate(predictedDate, 15);
+  // Calculate estimated business days until call
+  const estimatedBusinessDays = Math.ceil(remainingCalls / averageCalls.dynamic);
+  
+  // Determine confidence level based on data quality
+  let confidence: 'high' | 'medium' | 'low' = 'medium';
+  
+  if (convocationsWithCandidates.length > 20) {
+    confidence = 'high';
+  } else if (convocationsWithCandidates.length < 5) {
+    confidence = 'low';
+  }
+  
+  // Calculate predicted date
+  let predictedDate = referenceDate;
+  let daysToAdd = estimatedBusinessDays;
+  
+  while (daysToAdd > 0) {
+    predictedDate = new Date(predictedDate.getTime() + 24 * 60 * 60 * 1000);
+    if (!isSaturday(predictedDate) && !isSunday(predictedDate)) {
+      daysToAdd--;
+    }
+  }
   
   return {
-    criticalDocuments,
-    expiringDocuments
+    predictedDate,
+    estimatedBusinessDays,
+    remainingCalls,
+    averageCallsPerDay: averageCalls,
+    confidence
   };
 };
 
-// Calculate available positions based on withdrawals and eliminations
-export const getAvailablePositions = (): number => {
-  const candidates = getCandidates();
+/**
+ * Calculates the progress percentage for a candidate's position
+ * @param position The candidate's position
+ * @returns Progress percentage (0-100)
+ */
+export const getCallProgress = (position: number) => {
+  // Get total number of candidates
+  const convocations = getAllConvocations();
+  const convocationsWithCandidates = convocations.filter(conv => conv.candidateId);
   
-  // Count candidates by status
-  const eliminated = candidates.filter(c => c.status === 'eliminated').length;
-  const withdrawn = candidates.filter(c => c.status === 'withdrawn').length;
-  const called = candidates.filter(c => c.status === 'called' || c.status === 'appointed').length;
+  // Get the highest position called
+  let highestPositionCalled = 0;
   
-  // Calculate available positions
-  return (eliminated + withdrawn) - called;
+  convocationsWithCandidates.forEach(conv => {
+    if (conv.candidateId) {
+      const candidate = getCandidateById(conv.candidateId);
+      if (candidate && candidate.position > highestPositionCalled) {
+        highestPositionCalled = candidate.position;
+      }
+    }
+  });
+  
+  // Current position compared to highest position called
+  const progress = (highestPositionCalled / position) * 100;
+  
+  return Math.min(Math.max(0, progress), 100); // Ensure progress is between 0 and 100
 };
