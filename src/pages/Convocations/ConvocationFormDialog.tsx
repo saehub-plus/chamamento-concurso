@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { ConvocationForm } from '@/components/ConvocationForm';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 interface ConvocationFormDialogProps {
   open: boolean;
@@ -30,7 +30,9 @@ export function ConvocationFormDialog({ open, onOpenChange, onSuccess }: Convoca
           onSuccess={() => {
             onOpenChange(false);
             onSuccess();
-            toast.success('Convocação registrada com sucesso');
+            toast({
+              title: 'Convocação registrada com sucesso'
+            });
           }}
           onCancel={() => onOpenChange(false)}
         />

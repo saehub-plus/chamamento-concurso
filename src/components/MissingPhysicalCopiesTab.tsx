@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Document } from '@/types';
+import { FileCheck, AlertTriangle } from 'lucide-react';
 
 export function MissingPhysicalCopiesTab() {
   const [documents, setDocuments] = React.useState<Document[]>([]);
@@ -39,11 +40,14 @@ export function MissingPhysicalCopiesTab() {
   
   if (documents.length === 0) {
     return (
-      <div className="p-8 text-center">
-        <h3 className="text-xl font-medium text-muted-foreground mb-2">Nenhum documento pendente</h3>
-        <p className="text-sm text-muted-foreground">
-          Todos os seus documentos já possuem cópias físicas ou ainda não foram registrados.
-        </p>
+      <div className="py-10 text-center">
+        <div className="flex flex-col items-center">
+          <FileCheck className="h-10 w-10 text-green-500 mb-2" />
+          <h3 className="text-xl font-medium mb-2">Nenhum documento pendente</h3>
+          <p className="text-sm text-muted-foreground">
+            Todos os seus documentos já possuem cópias físicas ou ainda não foram registrados.
+          </p>
+        </div>
       </div>
     );
   }

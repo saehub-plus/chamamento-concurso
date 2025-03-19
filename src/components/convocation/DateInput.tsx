@@ -1,6 +1,5 @@
 
 import { forwardRef, useState, useEffect } from 'react';
-import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -9,19 +8,37 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DateInputProps {
-  date: Date;
+  date: Date | undefined;
   onChange: (date: Date) => void;
+  placeholder?: string;
 }
 
 export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
-  ({ date, onChange }, ref) => {
-    const [inputValue, setInputValue] = useState(format(date, 'dd/MM/yyyy'));
+  ({ date, onChange, placeholder = "DD/MM/YYYY" }, ref) => {
+    // Initialize input value based on date
+    const [inputValue, setInputValue] = useState<string>(
+      date ? formatDateToInput(date) : ''
+    );
     const [calendarOpen, setCalendarOpen] = useState(false);
 
+    // Update input value when date prop changes
     useEffect(() => {
-      setInputValue(format(date, 'dd/MM/yyyy'));
+      if (date) {
+        setInputValue(formatDateToInput(date));
+      } else {
+        setInputValue('');
+      }
     }, [date]);
 
+    // Format date object to dd/mm/yyyy for input display
+    function formatDateToInput(date: Date): string {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    // Handle manual date input
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       setInputValue(value);
@@ -41,6 +58,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
       }
     };
 
+    // Handle calendar selection
     const handleCalendarSelect = (date: Date | undefined) => {
       if (date) {
         onChange(date);
@@ -57,11 +75,12 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
               type="text"
               value={inputValue}
               onChange={handleDateChange}
-              placeholder="DD/MM/YYYY"
+              placeholder={placeholder}
               className="w-full pr-10"
             />
             <PopoverTrigger asChild>
               <Button
+                type="button" 
                 variant="ghost"
                 className="absolute right-0 top-0 h-full px-3 py-2"
                 onClick={() => setCalendarOpen(true)}

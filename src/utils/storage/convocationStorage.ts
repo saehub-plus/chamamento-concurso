@@ -28,7 +28,7 @@ export const addConvocation = (convocation: Omit<Convocation, 'id' | 'createdAt'
   saveConvocations([...convocations, newConvocation]);
   
   // Show toast notification
-  if (newConvocation.hasCalled && newConvocation.calledCandidates.length > 0) {
+  if (newConvocation.hasCalled && newConvocation.calledCandidates && newConvocation.calledCandidates.length > 0) {
     toast({
       title: "Convocação registrada",
       description: `${newConvocation.calledCandidates.length} candidato(s) foram convocados.`
@@ -122,5 +122,5 @@ export const getLatestConvocations = (limit = 5): Convocation[] => {
 // Get convocations with candidates (for dashboard count)
 export const getConvocationsWithCandidates = (): Convocation[] => {
   const convocations = getConvocations();
-  return convocations.filter(c => c.hasCalled && c.calledCandidates.length > 0);
+  return convocations.filter(c => c.hasCalled && c.calledCandidates && c.calledCandidates.length > 0);
 };

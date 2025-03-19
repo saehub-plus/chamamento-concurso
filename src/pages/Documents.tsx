@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isDocumentExpired, isDocumentComplete, hasVaccineProblem } from '@/utils/storage';
+import { MissingPhysicalCopiesTab } from '@/components/MissingPhysicalCopiesTab';
 
 export default function Documents() {
   const { documents, updateDocument, documentStatus } = useDocuments();
@@ -27,6 +28,7 @@ export default function Documents() {
   const completedCount = documents.filter(doc => isDocumentComplete(doc)).length;
   const expiredCount = documents.filter(doc => doc.hasDocument && doc.expirationDate && isDocumentExpired(doc)).length;
   const vaccineProblemCount = documents.filter(doc => hasVaccineProblem(doc)).length;
+  const missingPhysicalCount = documents.filter(doc => doc.hasDocument && !doc.hasPhysicalCopy).length;
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -94,7 +96,7 @@ export default function Documents() {
           ) : (
             <motion.div variants={fadeIn()}>
               <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-5 mb-6">
+                <TabsList className="grid grid-cols-6 mb-6">
                   <TabsTrigger value="all" className="relative">
                     Todos
                     <Badge className="ml-2">{documents.length}</Badge>
@@ -114,6 +116,10 @@ export default function Documents() {
                   <TabsTrigger value="vaccine" className="relative">
                     Vacinas
                     <Badge variant="outline" className="ml-2 bg-orange-100 text-orange-800">{vaccineProblemCount}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="physical" className="relative">
+                    Cópias Físicas
+                    <Badge variant="outline" className="ml-2 bg-blue-100 text-blue-800">{missingPhysicalCount}</Badge>
                   </TabsTrigger>
                 </TabsList>
                 
@@ -228,6 +234,10 @@ export default function Documents() {
                       </div>
                     )}
                   </div>
+                </TabsContent>
+                
+                <TabsContent value="physical" className="mt-0">
+                  <MissingPhysicalCopiesTab />
                 </TabsContent>
               </Tabs>
             </motion.div>
