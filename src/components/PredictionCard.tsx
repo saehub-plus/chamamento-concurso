@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -77,50 +76,42 @@ export function PredictionCard() {
     confidence: 'low'
   });
 
-  // Calculate prediction and set user info
+  // Obtenha a lista de candidatos do storage
+  const candidates = getCandidates();
+  const currentUserId = getCurrentUserId();
+  const candidate = currentUserId ? getCandidateById(currentUserId) : null;
+
+  // useEffect para recalcular a previsão sempre que o número de candidatos ou a posição do candidato mudar
   useEffect(() => {
-    const currentUserId = getCurrentUserId();
-    if (!currentUserId) {
+    if (!currentUserId || !candidate) {
       setHasUser(false);
       return;
     }
-
-    const candidate = getCandidateById(currentUserId);
-    if (candidate) {
-      setHasUser(true);
-      setUserName(candidate.name);
-      setUserPosition(candidate.position);
-      
-      // Calculate prediction
-      const candidatePrediction = predictCandidateCall(candidate.position);
-      setPrediction({
-        date: candidatePrediction.predictedDate ? 
-          format(candidatePrediction.predictedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 
-          null,
-        businessDays: candidatePrediction.estimatedBusinessDays,
-        averageCallsPerDay: candidatePrediction.averageCallsPerDay,
-        remainingCalls: candidatePrediction.remainingCalls,
-        confidence: candidatePrediction.confidence
-      });
-      
-      // Calculate progress
-      const progressPercent = getCallProgress(candidate.position);
-      setProgress(progressPercent);
-    } else {
-      setHasUser(false);
-    }
-  }, []);
+    setHasUser(true);
+    setUserName(candidate.name);
+    setUserPosition(candidate.position);
+    
+    // Recalcula a previsão com base na posição do candidato
+    const candidatePrediction = predictCandidateCall(candidate.position);
+    setPrediction({
+      date: candidatePrediction.predictedDate ? 
+        format(candidatePrediction.predictedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 
+        null,
+      businessDays: candidatePrediction.estimatedBusinessDays,
+      averageCallsPerDay: candidatePrediction.averageCallsPerDay,
+      remainingCalls: candidatePrediction.remainingCalls,
+      confidence: candidatePrediction.confidence
+    });
+    
+    const progressPercent = getCallProgress(candidate.position);
+    setProgress(progressPercent);
+  }, [candidate, candidate.position, candidates.length, currentUserId]);
 
   const motivational = getMotivationalMessage(progress);
-  
-  // Show placeholder when no user is identified
+
   if (!hasUser) {
     return (
-      <motion.div
-        variants={scaleVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      <motion.div variants={scaleVariants} initial="hidden" animate="visible">
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Previsão de Chamamento</CardTitle>
@@ -130,11 +121,7 @@ export function PredictionCard() {
               <p className="text-center text-muted-foreground">
                 Selecione qual candidato é você para ver sua previsão de chamamento
               </p>
-              <Button 
-                variant="default" 
-                className="w-full"
-                onClick={() => navigate('/candidates')}
-              >
+              <Button variant="default" className="w-full" onClick={() => navigate('/candidates')}>
                 <User className="h-4 w-4 mr-2" />
                 Selecionar meu nome na lista
               </Button>
@@ -146,11 +133,7 @@ export function PredictionCard() {
   }
 
   return (
-    <motion.div
-      variants={scaleVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <motion.div variants={scaleVariants} initial="hidden" animate="visible">
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Sua Previsão de Chamamento</CardTitle>
@@ -159,9 +142,7 @@ export function PredictionCard() {
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-lg">{userName}</h3>
-            <span className="text-muted-foreground text-sm">
-              (Posição #{userPosition})
-            </span>
+            <span className="text-muted-foreground text-sm">(Posição #{userPosition})</span>
           </div>
           
           {/* Progress Indicator */}
@@ -267,9 +248,7 @@ export function PredictionCard() {
           
           {/* Motivational Message */}
           <div className="bg-primary/10 rounded-lg p-4 flex items-start space-x-3">
-            <div className="mt-0.5">
-              {motivational.icon}
-            </div>
+            <div className="mt-0.5">{motivational.icon}</div>
             <p className="text-sm">{motivational.message}</p>
           </div>
         </CardContent>
