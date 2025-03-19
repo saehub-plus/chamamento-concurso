@@ -3,16 +3,16 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getConvocations, getCandidates, getDocumentsStatus } from '@/utils/storage';
+import { getAllConvocations, getAllCandidates, getCompletedDocumentsCount } from '@/utils/storage';
 import { Users, Calendar, UserCheck } from 'lucide-react';
 
 export function ConvocationsSection() {
   const navigate = useNavigate();
-  const convocations = getConvocations();
-  const candidates = getCandidates();
+  const convocations = getAllConvocations();
+  const candidates = getAllCandidates();
   
   // Count convocations with candidates
-  const convocationsWithCandidates = convocations.filter(conv => conv.hasCalled && conv.calledCandidates && conv.calledCandidates.length > 0).length;
+  const convocationsWithCandidates = convocations.filter(conv => conv.candidateId).length;
   
   // Calculate remaining positions
   const eliminatedCandidates = candidates.filter(c => c.status === 'eliminated').length;
@@ -21,9 +21,6 @@ export function ConvocationsSection() {
   
   // Calculate available positions: (Eliminated + Withdrawn) - Called
   const availablePositions = (eliminatedCandidates + withdrawnCandidates) - calledCandidates;
-  
-  // Get documents status to calculate completion percentage
-  const documentsStatus = getDocumentsStatus();
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -77,7 +74,7 @@ export function ConvocationsSection() {
           <UserCheck className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{documentsStatus.percentage}%</div>
+          <div className="text-2xl font-bold">{getCompletedDocumentsCount()}%</div>
           <p className="text-xs text-muted-foreground">
             Documentos completos para sua convocação
           </p>
