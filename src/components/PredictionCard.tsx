@@ -11,6 +11,7 @@ import {
   getCurrentUserId,
   getCandidateById, 
   predictCandidateCall, 
+  predictCandidateCallARIMA,
   getCallProgress 
 } from '@/utils/storage';
 import { Button } from '@/components/ui/button';
@@ -75,13 +76,24 @@ export function PredictionCard() {
     remainingCalls: 0,
     confidence: 'low'
   });
+  // Estado para armazenar os resultados do modelo ARIMA
+  const [arimaPrediction, setArimaPrediction] = useState<{
+    predictedDate: string | null;
+    estimatedBusinessDays: number;
+    forecast: number;
+    remainingCalls: number;
+  }>({
+    predictedDate: null,
+    estimatedBusinessDays: 0,
+    forecast: 0,
+    remainingCalls: 0,
+  });
 
   // Obtenha a lista de candidatos do storage
   const candidates = getCandidates();
   const currentUserId = getCurrentUserId();
   const candidate = currentUserId ? getCandidateById(currentUserId) : null;
 
-  // useEffect para recalcular a previsão quando o id ou posição do candidato, o total de candidatos ou o currentUserId mudar
   useEffect(() => {
     console.log("[PredictionCard] Iniciando useEffect com currentUserId:", currentUserId);
     if (!currentUserId || !candidate) {
@@ -93,7 +105,7 @@ export function PredictionCard() {
     setUserName(candidate.name);
     setUserPosition(candidate.position);
     
-    // Recalcula a previsão com base na posição do candidato
+    // Cálculo "do Site" – método atual
     const candidatePrediction = predictCandidateCall(candidate.position);
     console.log("[PredictionCard] Resultado de predictCandidateCall:", candidatePrediction);
 
@@ -110,6 +122,18 @@ export function PredictionCard() {
     const progressPercent = getCallProgress(candidate.position);
     console.log("[PredictionCard] Progresso calculado:", progressPercent);
     setProgress(progressPercent);
+
+    // Cálculo ARIMA
+    const arimaResult = predictCandidateCallARIMA(candidate.position);
+    console.log("[PredictionCard] Resultado de predictCandidateCallARIMA:", arimaResult);
+    setArimaPrediction({
+      predictedDate: arimaResult.predictedDate ? 
+        format(arimaResult.predictedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 
+        null,
+      estimatedBusinessDays: arimaResult.estimatedBusinessDays,
+      forecast: arimaResult.forecast,
+      remainingCalls: arimaResult.remainingCalls,
+    });
   }, [candidate?.id, candidate?.position, candidates.length, currentUserId]);
 
   const motivational = getMotivationalMessage(progress);
@@ -144,13 +168,14 @@ export function PredictionCard() {
           <CardTitle className="text-lg">Sua Previsão de Chamamento</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Dados do candidato */}
           <div className="flex items-center gap-2">
             <User className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-lg">{userName}</h3>
             <span className="text-muted-foreground text-sm">(Posição #{userPosition})</span>
           </div>
           
-          {/* Progress Indicator */}
+          {/* Indicador de Progresso */}
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm">
               <span>Progresso para Chamamento</span>
@@ -181,7 +206,7 @@ export function PredictionCard() {
             </div>
           </div>
           
-          {/* Detailed Prediction Analysis */}
+          {/* Análise Detalhada das Previsões */}
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-1 gap-3">
               {prediction.date && (
@@ -189,7 +214,7 @@ export function PredictionCard() {
                   <div className="flex justify-between items-center">
                     <div className="text-sm text-muted-foreground flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
-                      Previsão para chamamento
+                      Previsão (Método Atual)
                     </div>
                     <div className="text-xs bg-primary/20 px-2 py-0.5 rounded">
                       {prediction.confidence === 'high' ? 'Alta confiança' : 
@@ -207,7 +232,7 @@ export function PredictionCard() {
                 <div className="bg-primary/5 rounded-lg p-3">
                   <div className="text-sm text-muted-foreground flex items-center">
                     <TrendingUp className="h-4 w-4 mr-1" />
-                    Média de chamamentos por dia
+                    Médias de Chamamento
                   </div>
                   <div className="mt-2">
                     <div className="flex items-center justify-between">
@@ -232,14 +257,13 @@ export function PredictionCard() {
                 <div className="bg-primary/5 rounded-lg p-3">
                   <div className="text-sm text-muted-foreground flex items-center">
                     <Clock className="h-4 w-4 mr-1" />
-                    Situação atual
+                    Situação Atual
                   </div>
                   <div className="mt-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Candidatos à sua frente:</span>
                       <span className="font-medium">{prediction.remainingCalls}</span>
                     </div>
-                    
                     <div className="mt-4 pt-2 border-t">
                       <div className="text-xs text-muted-foreground">
                         A previsão considera o histórico de chamamentos e calcula uma média dinâmica, priorizando os dados mais recentes.
@@ -249,9 +273,40 @@ export function PredictionCard() {
                 </div>
               </div>
             </div>
+            
+            {/* Seção de Previsão ARIMA */}
+            <div className="bg-secondary/5 rounded-lg p-3">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-muted-foreground flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Previsão ARIMA
+                </div>
+                <div className="text-xs bg-secondary/20 px-2 py-0.5 rounded">
+                  Modelo ARIMA(1,1,0)
+                </div>
+              </div>
+              {arimaPrediction.predictedDate ? (
+                <>
+                  <div className="font-semibold mt-1">{arimaPrediction.predictedDate}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Aproximadamente {arimaPrediction.estimatedBusinessDays} dias úteis
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Taxa ARIMA: {arimaPrediction.forecast}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Candidatos restantes: {arimaPrediction.remainingCalls}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Dados insuficientes para previsão ARIMA.
+                </div>
+              )}
+            </div>
           </div>
           
-          {/* Motivational Message */}
+          {/* Mensagem Motivacional */}
           <div className="bg-primary/10 rounded-lg p-4 flex items-start space-x-3">
             <div className="mt-0.5">{motivational.icon}</div>
             <p className="text-sm">{motivational.message}</p>
