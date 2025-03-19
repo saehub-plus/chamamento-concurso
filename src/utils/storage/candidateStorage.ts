@@ -151,7 +151,7 @@ export const getAvailablePositions = (): number => {
   
   const eliminated = candidates.filter(candidate => candidate.status === 'eliminated').length;
   const withdrawn = candidates.filter(candidate => candidate.status === 'withdrawn').length;
-  const called = candidates.filter(candidate => candidate.status === 'called' || candidate.status === 'appointed').length;
+  const called = candidates.filter(candidate => candidate.status === 'called').length;
   
   return (eliminated + withdrawn) - called;
 };
