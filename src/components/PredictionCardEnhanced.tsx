@@ -31,8 +31,27 @@ export function PredictionCardEnhanced() {
       candidateStatus = candidate.status;
       const prediction = predictCandidateCall(candidate.position);
       predictedDate = prediction.predictedDate;
-      scenarios = prediction.scenarios;
-      hasScenarios = true;
+      
+      // Generate scenarios based on the prediction
+      const businessDays = prediction.estimatedBusinessDays;
+      if (businessDays > 0 && prediction.predictedDate) {
+        // Create scenarios manually since they're not part of the prediction return type
+        scenarios = {
+          pessimistic: { 
+            date: new Date(prediction.predictedDate.getTime() + (5 * 24 * 60 * 60 * 1000)), 
+            businessDays: businessDays + 5 
+          },
+          realistic: { 
+            date: prediction.predictedDate, 
+            businessDays: businessDays 
+          },
+          optimistic: { 
+            date: new Date(prediction.predictedDate.getTime() - (3 * 24 * 60 * 60 * 1000)), 
+            businessDays: Math.max(1, businessDays - 3) 
+          }
+        };
+        hasScenarios = true;
+      }
     }
   }
   

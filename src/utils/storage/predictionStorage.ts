@@ -1,3 +1,4 @@
+
 import { format, addBusinessDays, differenceInBusinessDays, isSaturday, isSunday, isWeekend } from 'date-fns';
 import { getConvocations, getCandidateById } from '@/utils/storage';
 
@@ -93,17 +94,21 @@ export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) =>
 export const predictCandidateCall = (position: number, referenceDate: Date = new Date()) => {
   // Get all convocations and check how many positions are called already
   const convocations = getConvocations();
-  const convocationsWithCandidates = convocations.filter(conv => conv.candidateId);
+  const convocationsWithCandidates = convocations.filter(conv => 
+    conv.hasCalled && conv.calledCandidates && conv.calledCandidates.length > 0
+  );
   
   // Get the highest position called
   let highestPositionCalled = 0;
   
   convocationsWithCandidates.forEach(conv => {
-    if (conv.candidateId) {
-      const candidate = getCandidateById(conv.candidateId);
-      if (candidate && candidate.position > highestPositionCalled) {
-        highestPositionCalled = candidate.position;
-      }
+    if (conv.calledCandidates && conv.calledCandidates.length > 0) {
+      conv.calledCandidates.forEach(candidateId => {
+        const candidate = getCandidateById(candidateId);
+        if (candidate && candidate.position > highestPositionCalled) {
+          highestPositionCalled = candidate.position;
+        }
+      });
     }
   });
   
@@ -164,17 +169,21 @@ export const predictCandidateCall = (position: number, referenceDate: Date = new
 export const getCallProgress = (position: number) => {
   // Get total number of candidates
   const convocations = getConvocations();
-  const convocationsWithCandidates = convocations.filter(conv => conv.candidateId);
+  const convocationsWithCandidates = convocations.filter(conv => 
+    conv.hasCalled && conv.calledCandidates && conv.calledCandidates.length > 0
+  );
   
   // Get the highest position called
   let highestPositionCalled = 0;
   
   convocationsWithCandidates.forEach(conv => {
-    if (conv.candidateId) {
-      const candidate = getCandidateById(conv.candidateId);
-      if (candidate && candidate.position > highestPositionCalled) {
-        highestPositionCalled = candidate.position;
-      }
+    if (conv.calledCandidates && conv.calledCandidates.length > 0) {
+      conv.calledCandidates.forEach(candidateId => {
+        const candidate = getCandidateById(candidateId);
+        if (candidate && candidate.position > highestPositionCalled) {
+          highestPositionCalled = candidate.position;
+        }
+      });
     }
   });
   

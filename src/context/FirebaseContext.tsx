@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { db } from '@/config/firebase';
 import { Candidate, Convocation, Document, DocumentsStatus } from '@/types';
@@ -57,7 +56,7 @@ interface FirebaseContextType {
 }
 
 // Create the context with a default empty object
-const FirebaseContext = createContext<FirebaseContextType>({} as FirebaseContextType);
+export const FirebaseContext = createContext<FirebaseContextType>({} as FirebaseContextType);
 
 // Provider component that wraps the app
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
