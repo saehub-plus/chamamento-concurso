@@ -10,7 +10,7 @@ export function AvailablePositions() {
   // Count candidates by status
   const withdrawn = candidates.filter(c => c.status === 'withdrawn').length;
   const eliminated = candidates.filter(c => c.status === 'eliminated').length;
-  const called = candidates.filter(c => c.status === 'called' || c.status === 'appointed').length;
+  const called = candidates.filter(c => c.status === 'called').length;
   
   // Calculate available positions correctly
   // Available = (Eliminated + Withdrawn) - Called
