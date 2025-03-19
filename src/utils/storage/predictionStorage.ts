@@ -221,10 +221,10 @@ export const predictCandidateCall = (candidatePosition: number): {
   // Calculate metrics
   const regressionSlope = calculateRegressionSlope(calledData);
   console.log("[predictCandidateCall] Regression slope:", regressionSlope);
-  
+
   const recentAverages = calculateRecentAverages(calledData);
   console.log("[predictCandidateCall] Recent averages:", recentAverages);
-  
+
   const dynamicAverage = calculateDynamicAverage(recentAverages, regressionSlope);
   console.log("[predictCandidateCall] Dynamic average:", dynamicAverage);
 
@@ -276,13 +276,12 @@ export const predictCandidateCall = (candidatePosition: number): {
   console.log("[predictCandidateCall] Dias estimados (realista):", realisticDays);
 
   // Get the most recent convocation date
-  const sortedConvocations = [...convocations]
-    .filter(c => c.hasCalled)
+  const sortedConvocations = [...convocations].filter(c => c.hasCalled)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
   let baseDate = new Date();
   if (sortedConvocations.length > 0) {
-    baseDate = new Date(sortedConvocations[0].date);
+    const lastConvocationDate = new Date(sortedConvocations[0].date);
+    baseDate = lastConvocationDate > new Date() ? lastConvocationDate : new Date();
   }
 
   // Calculate predicted dates for each scenario
