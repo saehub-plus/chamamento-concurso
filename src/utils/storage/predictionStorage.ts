@@ -1,13 +1,12 @@
-
 import { format, addBusinessDays, differenceInBusinessDays, isSaturday, isSunday, isWeekend } from 'date-fns';
-import { getAllConvocations, getCandidateById } from '@/utils/storage';
+import { getConvocations, getCandidateById } from '@/utils/storage';
 
 /**
  * Calculates the average number of calls per day from convocation data.
  * @returns Object containing different average calculations
  */
 export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) => {
-  const convocations = getAllConvocations();
+  const convocations = getConvocations();
   
   if (convocations.length <= 1) {
     return {
@@ -38,7 +37,9 @@ export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) =>
   }
   
   // Calculate overall average (excluding convocations without candidates)
-  const convocationsWithCandidates = sortedConvocations.filter(conv => conv.candidateId).length;
+  const convocationsWithCandidates = sortedConvocations.filter(conv => 
+    conv.hasCalled && conv.calledCandidates && conv.calledCandidates.length > 0
+  ).length;
   const overallAverage = businessDays > 0 ? convocationsWithCandidates / businessDays : 0.5;
   
   // Calculate 30-day average
@@ -46,7 +47,8 @@ export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) =>
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
   const last30DaysConvocations = sortedConvocations.filter(
-    conv => new Date(conv.date) >= thirtyDaysAgo && conv.candidateId
+    conv => new Date(conv.date) >= thirtyDaysAgo && 
+    conv.hasCalled && conv.calledCandidates && conv.calledCandidates.length > 0
   );
   
   const last30DaysBusinessDays = Math.min(businessDays, 22); // ~22 business days in 30 calendar days
@@ -59,7 +61,8 @@ export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) =>
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
   
   const last90DaysConvocations = sortedConvocations.filter(
-    conv => new Date(conv.date) >= ninetyDaysAgo && conv.candidateId
+    conv => new Date(conv.date) >= ninetyDaysAgo && 
+    conv.hasCalled && conv.calledCandidates && conv.calledCandidates.length > 0
   );
   
   const last90DaysBusinessDays = Math.min(businessDays, 65); // ~65 business days in 90 calendar days
@@ -89,7 +92,7 @@ export const calculateAverageCallsPerDay = (referenceDate: Date = new Date()) =>
  */
 export const predictCandidateCall = (position: number, referenceDate: Date = new Date()) => {
   // Get all convocations and check how many positions are called already
-  const convocations = getAllConvocations();
+  const convocations = getConvocations();
   const convocationsWithCandidates = convocations.filter(conv => conv.candidateId);
   
   // Get the highest position called
@@ -160,7 +163,7 @@ export const predictCandidateCall = (position: number, referenceDate: Date = new
  */
 export const getCallProgress = (position: number) => {
   // Get total number of candidates
-  const convocations = getAllConvocations();
+  const convocations = getConvocations();
   const convocationsWithCandidates = convocations.filter(conv => conv.candidateId);
   
   // Get the highest position called

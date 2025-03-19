@@ -1,21 +1,37 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AlertTriangle, FileWarning, Calendar, FileX } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Document } from '@/types';
-import { getDocumentsWithProblems, getDocumentsExpiringBeforeDate } from '@/utils/storage';
+import { getDocumentsWithProblems, getDocumentsExpiringBeforeDate } from '@/utils/storage/documentStorage';
 
 interface DocumentWarningsAlertProps {
   predictedDate: Date | null;
 }
 
 export function DocumentWarningsAlert({ predictedDate }: DocumentWarningsAlertProps) {
-  if (!predictedDate) return null;
+  const [criticalDocuments, setCriticalDocuments] = useState<Document[]>([]);
+  const [expiringDocuments, setExpiringDocuments] = useState<Document[]>([]);
   
-  const criticalDocuments = getDocumentsWithProblems();
-  const expiringDocuments = getDocumentsExpiringBeforeDate(predictedDate, 15);
+  useEffect(() => {
+    if (!predictedDate) return;
+    
+    // Refresh document problems
+    setCriticalDocuments(getDocumentsWithProblems());
+    setExpiringDocuments(getDocumentsExpiringBeforeDate(predictedDate, 15));
+    
+    // Setup interval to refresh the document problems
+    const intervalId = setInterval(() => {
+      setCriticalDocuments(getDocumentsWithProblems());
+      setExpiringDocuments(getDocumentsExpiringBeforeDate(predictedDate, 15));
+    }, 2000);
+    
+    return () => clearInterval(intervalId);
+  }, [predictedDate]);
+  
+  if (!predictedDate) return null;
   
   if (criticalDocuments.length === 0 && expiringDocuments.length === 0) {
     return null;
