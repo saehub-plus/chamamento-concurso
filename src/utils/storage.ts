@@ -1,11 +1,22 @@
+// src/utils/storage.ts
 
-// Re-export everything from the storage modules except getAvailablePositions
-// from candidateStorage since it's already exported from predictionStorage
-export * from './storage/candidateStorage';
-export * from './storage/convocationStorage';
-export * from './storage/predictionStorage';
-export * from './storage/documentStorage';
+import { useCompetition } from '@/context/CompetitionContext';
 
-// Fix the conflicting export by re-exporting explicitly
-// We'll redefine getAvailablePositions here to avoid the conflict
-export { getAvailablePositions } from './storage/candidateStorage';
+// Wrapper para adicionar o prefixo do concurso selecionado às chaves de storage
+export const getStorageKey = (key: string): string => {
+  // For non-React contexts, try to extract competition from URL
+  let competition = 'joinville'; // default
+  
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    if (path.startsWith('/florianopolis-concurso')) {
+      competition = 'florianopolis-concurso';
+    } else if (path.startsWith('/florianopolis-processo')) {
+      competition = 'florianopolis-processo';
+    } else if (path.startsWith('/joinville')) {
+      competition = 'joinville';
+    }
+  }
+  
+  return `${competition}-${key}`;
+};

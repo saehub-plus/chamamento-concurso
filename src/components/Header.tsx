@@ -1,43 +1,62 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutGrid, Users, Calendar, FileText } from 'lucide-react';
+import { LayoutGrid, Users, Calendar, FileText, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCompetition } from '@/context/CompetitionContext';
 
 export function Header() {
   const location = useLocation();
+  const { currentCompetition, getCompetitionLogo, getCompetitionTitle } = useCompetition();
+  
+  // Update paths based on current competition
+  const basePath = `/${currentCompetition}`;
   
   const navItems = [
     { 
       path: '/', 
-      label: 'Dashboard', 
-      icon: <LayoutGrid className="w-4 h-4 mr-2" /> 
+      label: 'Início', 
+      icon: <Home className="w-4 h-4 mr-2" />,
+      exact: true
     },
     { 
-      path: '/candidates', 
+      path: basePath, 
+      label: 'Dashboard', 
+      icon: <LayoutGrid className="w-4 h-4 mr-2" />,
+      exact: true
+    },
+    { 
+      path: `${basePath}/candidates`, 
       label: 'Candidatos', 
       icon: <Users className="w-4 h-4 mr-2" /> 
     },
     { 
-      path: '/convocations', 
+      path: `${basePath}/convocations`, 
       label: 'Convocações', 
       icon: <Calendar className="w-4 h-4 mr-2" /> 
     },
     { 
-      path: '/documents', 
+      path: `${basePath}/documents`, 
       label: 'Documentos', 
       icon: <FileText className="w-4 h-4 mr-2" /> 
     }
   ];
 
+  const isActive = (item: typeof navItems[0]) => {
+    if (item.exact) {
+      return location.pathname === item.path;
+    }
+    return location.pathname.startsWith(item.path);
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-background/90 border-b">
       <div className="layout-container">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to={basePath} className="flex items-center gap-2">
             <img 
-              src="/lovable-uploads/2ffdbb6f-3cb5-4fa5-9565-5d87797f474f.png" 
-              alt="Prefeitura de Joinville" 
+              src={getCompetitionLogo()} 
+              alt={getCompetitionTitle()} 
               className="h-10 w-auto"
             />
             <motion.div
@@ -46,13 +65,15 @@ export function Header() {
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
             >
               <span className="text-primary font-semibold text-xl">Enfermeiros</span>
-              <span className="text-muted-foreground text-xl ml-1">Joinville</span>
+              <span className="text-muted-foreground text-xl ml-1">
+                {currentCompetition === 'joinville' ? 'Joinville' : 'Florianópolis'}
+              </span>
             </motion.div>
           </Link>
           
           <nav className="flex gap-1 sm:gap-2">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const active = isActive(item);
               
               return (
                 <Link
@@ -60,12 +81,12 @@ export function Header() {
                   to={item.path}
                   className={cn(
                     "flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 relative",
-                    isActive 
+                    active 
                       ? "text-primary-foreground" 
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   )}
                 >
-                  {isActive && (
+                  {active && (
                     <motion.div
                       layoutId="nav-indicator"
                       className="absolute inset-0 bg-primary rounded-lg z-[-1]"
