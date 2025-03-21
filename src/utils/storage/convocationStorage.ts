@@ -17,12 +17,14 @@ export const saveConvocations = (convocations: Convocation[]): void => {
 };
 
 // Add new convocation
-export const addConvocation = (convocation: Omit<Convocation, 'id' | 'createdAt'>): Convocation => {
+export const addConvocation = (convocation: Omit<Convocation, 'id' | 'createdAt' | 'updatedAt'>): Convocation => {
   const convocations = getConvocations();
+  const now = new Date().toISOString();
   const newConvocation: Convocation = {
     ...convocation,
     id: crypto.randomUUID(),
-    createdAt: new Date().toISOString()
+    createdAt: now,
+    updatedAt: now
   };
   
   saveConvocations([...convocations, newConvocation]);
@@ -46,13 +48,15 @@ export const addConvocation = (convocation: Omit<Convocation, 'id' | 'createdAt'
 // Add multiple convocations with no calls
 export const addMultipleEmptyConvocations = (dates: Date[]): Convocation[] => {
   const convocations = getConvocations();
+  const now = new Date().toISOString();
   
   const newConvocations: Convocation[] = dates.map(date => ({
     id: crypto.randomUUID(),
     date: date.toISOString(),
     hasCalled: false,
     calledCandidates: [],
-    createdAt: new Date().toISOString()
+    createdAt: now,
+    updatedAt: now
   }));
   
   saveConvocations([...convocations, ...newConvocations]);
@@ -76,7 +80,8 @@ export const updateConvocation = (id: string, updates: Partial<Convocation>): Co
   const oldConvocation = convocations[convocationIndex];
   const updatedConvocation = {
     ...oldConvocation,
-    ...updates
+    ...updates,
+    updatedAt: new Date().toISOString() // Always update the updatedAt field
   };
   
   convocations[convocationIndex] = updatedConvocation;
