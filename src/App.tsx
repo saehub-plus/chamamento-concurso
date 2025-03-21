@@ -11,8 +11,8 @@ import { CompetitionProvider } from './context/CompetitionContext';
 
 function App() {
   return (
-    <CompetitionProvider>
-      <Router>
+    <Router>
+      <CompetitionProvider>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/joinville" element={<Index />} />
@@ -31,8 +31,8 @@ function App() {
           <Route path="/florianopolis-processo/documents" element={<Documents />} />
         </Routes>
         <Toaster />
-      </Router>
-    </CompetitionProvider>
+      </CompetitionProvider>
+    </Router>
   );
 }
 
