@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { HeaderWrapper } from '@/components/HeaderWrapper';
 import { DocumentCard } from '@/components/DocumentCard';
 import { useDocuments } from '@/utils/storage';
-import { File, FileCheck, FileWarning, AlertTriangle, Syringe } from 'lucide-react';
+import { File, FileCheck, FileWarning, AlertTriangle, Syringe, FilePlus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { EmptyState } from '@/components/EmptyState';
 import { staggerContainer, fadeIn } from '@/utils/animations';
@@ -11,13 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { isDocumentExpired, isDocumentComplete, hasVaccineProblem } from '@/utils/storage';
 import { MissingPhysicalCopiesTab } from '@/components/MissingPhysicalCopiesTab';
+import { DocumentForm } from '@/components/DocumentForm';
+import { Document } from '@/types';
 
 export default function Documents() {
-  const { documents, updateDocument, documentStatus } = useDocuments();
+  const { documents, updateDocument, documentStatus, addDocument } = useDocuments();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
+  const [showAddDocumentDialog, setShowAddDocumentDialog] = useState(false);
   
   // Count documents in each category for tab badges
   const pendingCount = documents.filter(doc => 
@@ -30,6 +34,12 @@ export default function Documents() {
   const vaccineProblemCount = documents.filter(doc => hasVaccineProblem(doc)).length;
   const missingPhysicalCount = documents.filter(doc => doc.hasDocument && !doc.hasPhysicalCopy).length;
   
+  const handleDocumentSuccess = (document: Document) => {
+    addDocument(document);
+    setShowAddDocumentDialog(false);
+    setActiveTab('pending');
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <HeaderWrapper />
@@ -50,6 +60,14 @@ export default function Documents() {
             </div>
             
             <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-4">
+              <Button 
+                onClick={() => setShowAddDocumentDialog(true)}
+                className="mb-2 md:mb-0"
+              >
+                <FilePlus className="mr-2 h-4 w-4" />
+                Adicionar Documento
+              </Button>
+              
               <div className="flex items-center gap-3 bg-muted rounded-lg px-4 py-2">
                 <div className="flex items-center gap-1">
                   <FileCheck className="h-5 w-5 text-green-600" />
@@ -92,6 +110,12 @@ export default function Documents() {
               icon={<File className="h-10 w-10" />}
               title="Nenhum documento cadastrado"
               description="Adicione documentos para gerenciar seus itens para o concurso."
+              action={
+                <Button onClick={() => setShowAddDocumentDialog(true)}>
+                  <FilePlus className="mr-2 h-4 w-4" />
+                  Adicionar Documento
+                </Button>
+              }
             />
           ) : (
             <motion.div variants={fadeIn()}>
@@ -250,6 +274,22 @@ export default function Documents() {
           </Button>
         </div>
       </main>
+      
+      {/* Add Document Dialog */}
+      <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Documento</DialogTitle>
+            <DialogDescription>
+              Preencha as informações do documento que deseja adicionar.
+            </DialogDescription>
+          </DialogHeader>
+          <DocumentForm 
+            onSuccess={handleDocumentSuccess}
+            onCancel={() => setShowAddDocumentDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

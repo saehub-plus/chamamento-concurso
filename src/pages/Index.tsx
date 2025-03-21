@@ -18,13 +18,15 @@ import { CandidateForm } from '@/components/CandidateForm';
 import { BulkCandidateForm } from '@/components/BulkCandidateForm';
 import { ConvocationForm } from '@/components/ConvocationForm';
 import { PredictionCardEnhanced } from '@/components/PredictionCardEnhanced';
+import { ArimaPrediction } from '@/components/prediction/ArimaPrediction';
 import { DocumentStatusCard } from '@/components/DocumentStatusCard';
 import { EmptyState } from '@/components/EmptyState';
 import { CallsOverTimeChart } from '@/components/charts/CallsOverTimeChart';
-import { getCandidates, getConvocations, getCandidateStatusCounts, getDocumentsStatus } from '@/utils/storage';
+import { getCandidates, getConvocations, getCandidateStatusCounts, getDocumentsStatus, predictCandidateCall } from '@/utils/storage';
 import { StatusCount, Candidate, Convocation, DocumentsStatus } from '@/types';
 import { toast } from 'sonner';
 import { pageVariants } from '@/utils/animations';
+import { useCompetition } from '@/context/CompetitionContext';
 
 export default function Index() {
   const [showCandidateDialog, setShowCandidateDialog] = useState(false);
@@ -49,6 +51,8 @@ export default function Index() {
     vaccineProblem: 0,
     percentage: 0
   });
+  const [currentUserPosition, setCurrentUserPosition] = useState<number>(0);
+  const { currentCompetition, getCompetitionLogo } = useCompetition();
 
   useEffect(() => {
     const loadData = () => {
@@ -62,6 +66,14 @@ export default function Index() {
       setTotalConvocations(convocations.length);
       setHasData(candidates.length > 0 || convocations.length > 0);
       setDocumentStatus(docStatus);
+      
+      // Set current user position for prediction
+      const currentUser = candidates.find(c => c.isCurrentUser);
+      if (currentUser) {
+        setCurrentUserPosition(currentUser.position);
+      } else if (candidates.length > 0) {
+        setCurrentUserPosition(candidates[0].position);
+      }
     };
     
     loadData();
@@ -70,6 +82,9 @@ export default function Index() {
   const handleRefresh = () => {
     setShouldRefresh(prev => !prev);
   };
+
+  // Get prediction data for ARIMA component
+  const candidatePrediction = currentUserPosition ? predictCandidateCall(currentUserPosition) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,7 +101,7 @@ export default function Index() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground mt-1">
-              Acompanhamento de convocações para enfermeiros em Joinville
+              Acompanhamento de convocações para enfermeiros
             </p>
           </div>
           
@@ -143,8 +158,60 @@ export default function Index() {
           />
         ) : (
           <div className="grid grid-cols-1 gap-6">
-            {/* Prediction Card Enhanced */}
-            <PredictionCardEnhanced />
+            {/* Competition selection buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Link to="/joinville">
+                <Button 
+                  variant={currentCompetition === "joinville" ? "default" : "outline"} 
+                  className="w-full h-32 rounded-xl flex flex-col items-center justify-center p-4 transition-all"
+                >
+                  <img 
+                    src="/lovable-uploads/2ffdbb6f-3cb5-4fa5-9565-5d87797f474f.png" 
+                    alt="Joinville" 
+                    className="h-16 w-auto mb-2" 
+                  />
+                  <span className="font-medium">Joinville</span>
+                </Button>
+              </Link>
+              <Link to="/florianopolis-concurso">
+                <Button 
+                  variant={currentCompetition === "florianopolis-concurso" ? "default" : "outline"} 
+                  className="w-full h-32 rounded-xl flex flex-col items-center justify-center p-4 transition-all"
+                >
+                  <img 
+                    src="/lovable-uploads/78a6d346-e822-4a04-a632-c8a959dceac7.png" 
+                    alt="Florianópolis Concurso" 
+                    className="h-16 w-auto mb-2" 
+                  />
+                  <span className="font-medium">Florianópolis - Concurso</span>
+                </Button>
+              </Link>
+              <Link to="/florianopolis-processo">
+                <Button 
+                  variant={currentCompetition === "florianopolis-processo" ? "default" : "outline"} 
+                  className="w-full h-32 rounded-xl flex flex-col items-center justify-center p-4 transition-all"
+                >
+                  <img 
+                    src="/lovable-uploads/78a6d346-e822-4a04-a632-c8a959dceac7.png" 
+                    alt="Florianópolis Processo" 
+                    className="h-16 w-auto mb-2" 
+                  />
+                  <span className="font-medium">Florianópolis - Processo</span>
+                </Button>
+              </Link>
+            </div>
+            
+            {/* Prediction Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PredictionCardEnhanced />
+              {candidatePrediction && (
+                <ArimaPrediction 
+                  position={currentUserPosition}
+                  predictedDate={candidatePrediction.predictedDate}
+                  confidence={candidatePrediction.confidence}
+                />
+              )}
+            </div>
             
             {/* Calls Over Time Chart */}
             <CallsOverTimeChart />
@@ -168,7 +235,7 @@ export default function Index() {
                     </p>
                     <div className="mt-4">
                       <Button asChild variant="outline" size="sm" className="w-full">
-                        <Link to="/candidates">Ver todos</Link>
+                        <Link to={`/${currentCompetition}/candidates`}>Ver todos</Link>
                       </Button>
                     </div>
                   </CardContent>
@@ -185,7 +252,7 @@ export default function Index() {
                     </p>
                     <div className="mt-4">
                       <Button asChild variant="outline" size="sm" className="w-full">
-                        <Link to="/convocations">Ver todas</Link>
+                        <Link to={`/${currentCompetition}/convocations`}>Ver todas</Link>
                       </Button>
                     </div>
                   </CardContent>

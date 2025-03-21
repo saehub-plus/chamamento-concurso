@@ -252,7 +252,16 @@ export const useDocuments = () => {
     }
   };
 
-  return { documents, documentStatus, updateDocument };
+  const addDocument = (document: Document) => {
+    const docs = getDocuments();
+    const newDocs = [...docs, document];
+    localStorage.setItem(getStorageKey('documents'), JSON.stringify(newDocs));
+    setDocuments(newDocs);
+    setDocumentStatus(getDocumentsStatus());
+    return document;
+  };
+
+  return { documents, documentStatus, updateDocument, addDocument };
 };
 
 export const isDocumentExpired = (document: Document): boolean => {

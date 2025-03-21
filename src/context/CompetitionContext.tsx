@@ -49,7 +49,7 @@ export const CompetitionProvider: React.FC<{ children: ReactNode }> = ({ childre
         return '/lovable-uploads/2ffdbb6f-3cb5-4fa5-9565-5d87797f474f.png';
       case 'florianopolis-concurso':
       case 'florianopolis-processo':
-        return '/lovable-uploads/cedd88cf-ba98-4c11-8c7f-caae4b6289e9.png';
+        return '/lovable-uploads/78a6d346-e822-4a04-a632-c8a959dceac7.png';
       default:
         return '/lovable-uploads/2ffdbb6f-3cb5-4fa5-9565-5d87797f474f.png';
     }
