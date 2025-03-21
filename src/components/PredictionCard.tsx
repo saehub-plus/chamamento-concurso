@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -104,7 +105,7 @@ export function PredictionCard() {
       businessDays: candidatePrediction.estimatedBusinessDays,
       averageCallsPerDay: candidatePrediction.averageCallsPerDay,
       remainingCalls: candidatePrediction.remainingCalls,
-      confidence: candidatePrediction.confidence
+      confidence: candidatePrediction.confidence as 'high' | 'medium' | 'low'
     });
     
     const progressPercent = getCallProgress(candidate.position);

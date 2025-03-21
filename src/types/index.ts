@@ -23,6 +23,7 @@ export interface Convocation {
   calledCandidates: string[]; // Array of candidate IDs
   notes?: string;
   createdAt: string;
+  updatedAt: string; // Adding missing updatedAt property
 }
 
 export interface StatusCount {
@@ -57,6 +58,10 @@ export interface Document {
   vaccineDoses?: string[]; // Array of dates for vaccine doses
   userAge?: number; // For Tríplice Viral vaccine
   hasNotarizedCopy?: boolean; // For documents that require notarized signatures
+  vaccineDetails?: { // Adding missing vaccineDetails property
+    isComplete: boolean;
+    doses?: number;
+  };
   createdAt: string;
   updatedAt: string;
 }

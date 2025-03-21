@@ -1,4 +1,3 @@
-
 // src/utils/storage.ts
 
 import { useCompetition } from '@/context/CompetitionContext';
@@ -274,8 +273,16 @@ export const isDocumentComplete = (document: Document): boolean => {
   }
   
   // For vaccine documents, check if all doses are complete
-  if (document.name.includes('Vacina') && document.vaccineDetails) {
-    return document.vaccineDetails.isComplete;
+  if (document.name.includes('Vacina') && document.vaccineDoses) {
+    // Instead of checking vaccineDetails.isComplete, determine completion based on doses
+    if (document.name === "Vacina Hepatite B") {
+      return document.vaccineDoses.length >= 3;
+    } else if (document.name === "Vacina DT") {
+      return document.vaccineDoses.length >= 3;
+    } else if (document.name === "Vacina Tríplice Viral") {
+      if (!document.userAge) return false;
+      return document.userAge >= 30 ? document.vaccineDoses.length >= 1 : document.vaccineDoses.length >= 2;
+    }
   }
   
   return true;
@@ -285,8 +292,8 @@ export const hasVaccineProblem = (document: Document): boolean => {
   if (!document.hasDocument) return false;
   
   return document.name.includes('Vacina') && 
-         document.vaccineDetails && 
-         !document.vaccineDetails.isComplete;
+         document.vaccineDoses && 
+         !isDocumentComplete(document);
 };
 
 export const getDocumentsStatus = (): DocumentsStatus => {
